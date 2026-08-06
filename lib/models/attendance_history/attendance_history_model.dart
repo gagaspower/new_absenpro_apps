@@ -1,48 +1,54 @@
 class AttendanceHistoryModel {
   final String id;
   final String
-      attendanceDate; // format: "5 Agustus 2026" (display), atau bisa DateTime
-  final String? checkInTime; // format "HH:mm"
-  final String? checkOutTime; // format "HH:mm"
-  final String? status; // "present", "late", "absent", dsb
+      attendanceDate; // sudah terformat dari backend, mis. "06 Agustus 2026"
+  final String? scheduledCheckIn;
+  final String? scheduledCheckOut;
+  final String? checkInTime; // "HH:mm" atau "-" kalau belum absen
+  final String? checkOutTime;
+  final String? status; // enum: present, late, permission, leave, sick, absent
   final int lateMinutes;
+  final String? notes;
+  final double? checkInDistanceMeter;
+  final double? checkOutDistanceMeter;
 
   const AttendanceHistoryModel({
     required this.id,
     required this.attendanceDate,
+    this.scheduledCheckIn,
+    this.scheduledCheckOut,
     this.checkInTime,
     this.checkOutTime,
     this.status,
     this.lateMinutes = 0,
+    this.notes,
+    this.checkInDistanceMeter,
+    this.checkOutDistanceMeter,
   });
 
   factory AttendanceHistoryModel.fromJson(Map<String, dynamic> json) {
-    // Asumsi: backend mengirim data absensi per-hari dalam format sesuai
-    // response yang ditampilkan. Bisa disesuaikan kalau structure-nya beda.
     return AttendanceHistoryModel(
       id: json['id']?.toString() ?? '',
-      attendanceDate: _formatDate(json['attendance_date']),
-      checkInTime: _formatTime(json['check_in_time']),
-      checkOutTime: _formatTime(json['check_out_time']),
+      attendanceDate: json['attendance_date']?.toString() ?? '-',
+      scheduledCheckIn: json['scheduled_check_in'],
+      scheduledCheckOut: json['scheduled_check_out'],
+      checkInTime: json['check_in_time'],
+      checkOutTime: json['check_out_time'],
       status: json['status'],
       lateMinutes: json['late_minutes'] ?? 0,
+      notes: json['notes'],
+      checkInDistanceMeter: _toDouble(json['check_in_distance_meter']),
+      checkOutDistanceMeter: _toDouble(json['check_out_distance_meter']),
     );
   }
 
-  static String _formatDate(dynamic date) {
-    if (date == null) return '-';
-    // TODO: kalau backend kirim ISO format, parse & ubah ke "5 Agustus 2026"
-    // Untuk sekarang asumsikan sudah formatted dari backend.
-    return date.toString();
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
   }
 
-  static String? _formatTime(dynamic time) {
-    if (time == null) return null;
-    final value = time.toString();
-    if (value.length >= 5) return value.substring(0, 5);
-    return value;
-  }
-
-  bool get hasCheckedIn => checkInTime != null;
-  bool get hasCheckedOut => checkOutTime != null;
+  /// Backend mengirim "-" (bukan null) kalau belum absen masuk/pulang.
+  bool get hasCheckedIn => checkInTime != null && checkInTime != '-';
+  bool get hasCheckedOut => checkOutTime != null && checkOutTime != '-';
 }

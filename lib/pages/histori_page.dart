@@ -1,5 +1,8 @@
 import 'package:absenpro/models/attendance_history/attendance_history_model.dart';
 import 'package:absenpro/providers/periode/periode_provider.dart';
+import 'package:absenpro/providers/attendance/attendance_history_provider.dart';
+import 'package:absenpro/providers/periode/periode_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 
@@ -13,6 +16,7 @@ class HistoriPage extends StatefulWidget {
 class _HistoriPageState extends State<HistoriPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final ScrollController _absenScrollController = ScrollController();
 
   static const Color primaryTeal = Color(0xFF2FC7CF);
 
@@ -60,12 +64,32 @@ class _HistoriPageState extends State<HistoriPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    context.read<PeriodeProvider>().fetchPeriode();
+    _absenScrollController.addListener(_onAbsenScroll);
+
+    // Muat periode dulu (untuk dapat default periode berjalan), baru
+    // muat histori absen sesuai periode default tersebut.
+    context.read<PeriodeProvider>().fetchPeriode().then((_) {
+      if (!mounted) return;
+      final periode = context.read<PeriodeProvider>().selectedPeriode;
+      context
+          .read<AttendanceHistoryProvider>()
+          .fetchInitial(periode: periode?.periodeValue);
+    });
+  }
+
+  void _onAbsenScroll() {
+    if (!_absenScrollController.hasClients) return;
+    final position = _absenScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      context.read<AttendanceHistoryProvider>().loadMore();
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _absenScrollController.removeListener(_onAbsenScroll);
+    _absenScrollController.dispose();
     super.dispose();
   }
 
@@ -162,21 +186,63 @@ class _HistoriPageState extends State<HistoriPage>
         _buildPeriodeFilter(),
         const SizedBox(height: 12),
         Expanded(
-          child: _dataAbsen.isEmpty
-              ? const Center(
+          child: Consumer<AttendanceHistoryProvider>(
+            builder: (context, historyProvider, _) {
+              if (historyProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (historyProvider.errorMessage != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      historyProvider.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style:
+                          const TextStyle(color: Colors.black45, fontSize: 13),
+                    ),
+                  ),
+                );
+              }
+
+              if (historyProvider.items.isEmpty) {
+                return const Center(
                   child: Text(
-                    'Belum ada histori absensi',
+                    'Tidak ada data',
                     style: TextStyle(color: Colors.black38, fontSize: 13),
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _dataAbsen.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => _AbsenCard(
-                    attendance: _dataAbsen[index],
-                  ),
-                ),
+                );
+              }
+
+              return ListView.separated(
+                controller: _absenScrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: historyProvider.items.length +
+                    (historyProvider.hasMore ? 1 : 0),
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  if (index >= historyProvider.items.length) {
+                    // Loader tambahan di bawah list saat sedang load more.
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return _AbsenCard(
+                    attendance: historyProvider.items[index],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -193,9 +259,13 @@ class _HistoriPageState extends State<HistoriPage>
 
           return InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: periodeProvider.periodeList.isEmpty
-                ? null
-                : () => _showPeriodeBottomSheet(context, periodeProvider),
+            onTap: () {
+              periodeProvider.selectPeriode(periode);
+              Navigator.pop(sheetContext);
+              context
+                  .read<AttendanceHistoryProvider>()
+                  .fetchInitial(periode: periode.value);
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -276,10 +346,17 @@ class _HistoriPageState extends State<HistoriPage>
               ),
               const SizedBox(height: 8),
               Flexible(
-                child: ListView.builder(
+                child: ListView.separated(
                   shrinkWrap: true,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: periodeProvider.periodeList.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    thickness: 1,
+                    indent: 20,
+                    endIndent: 20,
+                    color: Color(0xFFF0F0F0),
+                  ),
                   itemBuilder: (context, index) {
                     final periode = periodeProvider.periodeList[index];
                     final isSelected = periode.periodeValue ==
@@ -302,10 +379,7 @@ class _HistoriPageState extends State<HistoriPage>
                       onTap: () {
                         periodeProvider.selectPeriode(periode);
                         Navigator.pop(sheetContext);
-                        // TODO: refetch data absen berdasarkan periode yang
-                        // baru dipilih, misal:
-                        // context.read<AbsenHistoryProvider>()
-                        //   .fetchByPeriode(periode.value);
+                        // TODO: refetch data absen berdasarkan periode yang baru dipilih
                       },
                     );
                   },
@@ -477,6 +551,8 @@ class _StatusStyle {
 }
 
 /// Widget card untuk tampilkan 1 hari absensi (jam masuk | jam pulang).
+/// Widget card untuk tampilkan 1 hari absensi (tanggal + status,
+/// lalu jam masuk | jam pulang).
 class _AbsenCard extends StatelessWidget {
   final AttendanceHistoryModel attendance;
 
@@ -484,6 +560,8 @@ class _AbsenCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusInfo = _absenStatusInfo(attendance.status);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -500,19 +578,42 @@ class _AbsenCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            attendance.attendanceDate,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+          // Baris tanggal (kiri) + status (kanan) dalam 1 baris.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  attendance.attendanceDate,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusInfo.color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusInfo.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusInfo.color,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Ikon wajah (absensi dengan wajah)
               Container(
                 width: 44,
                 height: 44,
@@ -527,13 +628,12 @@ class _AbsenCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Jam masuk
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      attendance.checkInTime ?? '-',
+                      attendance.hasCheckedIn ? attendance.checkInTime! : '-',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -543,29 +643,21 @@ class _AbsenCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     const Text(
                       'Masuk',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                   ],
                 ),
               ),
-              // Pemisah garis
               const Text(
                 '|',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black26,
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.black26),
               ),
-              // Jam pulang
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      attendance.checkOutTime ?? '-',
+                      attendance.hasCheckedOut ? attendance.checkOutTime! : '-',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -574,10 +666,10 @@ class _AbsenCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      attendance.checkOutTime != null ? 'Pulang' : 'Pulang',
+                      'Pulang',
                       style: TextStyle(
                         fontSize: 12,
-                        color: attendance.checkOutTime != null
+                        color: attendance.hasCheckedOut
                             ? Colors.black54
                             : Colors.red[300],
                       ),
@@ -606,4 +698,30 @@ class _SampleAttendance extends AttendanceHistoryModel {
           checkInTime: checkInTime,
           checkOutTime: checkOutTime,
         );
+}
+
+class _AbsenStatusInfo {
+  final String label;
+  final Color color;
+
+  const _AbsenStatusInfo(this.label, this.color);
+}
+
+_AbsenStatusInfo _absenStatusInfo(String? status) {
+  switch (status) {
+    case 'present':
+      return const _AbsenStatusInfo('Hadir', Color(0xFF4CAF7D));
+    case 'late':
+      return const _AbsenStatusInfo('Terlambat', Color(0xFFC9A23B));
+    case 'permission':
+      return const _AbsenStatusInfo('Izin', Color(0xFF4A87C9));
+    case 'leave':
+      return const _AbsenStatusInfo('Cuti', Color(0xFF8E6FCE));
+    case 'sick':
+      return const _AbsenStatusInfo('Sakit', Color(0xFFE0637A));
+    case 'absent':
+      return const _AbsenStatusInfo('Tidak Hadir', Color(0xFFB0413E));
+    default:
+      return const _AbsenStatusInfo('-', Colors.black45);
+  }
 }
