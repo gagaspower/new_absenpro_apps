@@ -12,11 +12,15 @@ class AttendanceHistoryProvider extends ChangeNotifier {
   bool hasMore = true;
   String? errorMessage;
   String? _currentPeriode;
+  int _requestVersion = 0;
 
   /// Muat ulang dari awal (offset 0), dipanggil saat pertama buka tab
   /// Absen atau saat user ganti periode dari bottom sheet.
   Future<void> fetchInitial({String? periode}) async {
+    final requestVersion = ++_requestVersion;
     _currentPeriode = periode;
+    final previousItems = List<AttendanceHistoryModel>.from(items);
+
     isLoading = true;
     errorMessage = null;
     items = [];
@@ -29,12 +33,19 @@ class AttendanceHistoryProvider extends ChangeNotifier {
         limit: _limit,
         offset: 0,
       );
+
+      if (requestVersion != _requestVersion) return;
+
       items = page.rows;
       hasMore = items.length < page.total;
       isLoading = false;
       notifyListeners();
     } catch (e) {
-      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (requestVersion != _requestVersion) return;
+
+      items = previousItems;
+      hasMore = false;
+      errorMessage = null;
       isLoading = false;
       notifyListeners();
     }

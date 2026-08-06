@@ -3,6 +3,7 @@ import 'package:absenpro/helpers/permisssion_helper.dart';
 import 'package:absenpro/pages/dashboard_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:absenpro/services/face_profile/face_profile_service.dart';
+import 'package:absenpro/widgets/custom_alert_dialog.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -120,18 +121,23 @@ class _FaceProfileRegisterPageState extends State<FaceProfileRegisterPage> {
 
       if (faces.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wajah tidak terdeteksi, coba lagi')),
+        await showCustomAlert(
+          context: context,
+          title: 'Gagal',
+          message: 'Wajah tidak terdeteksi, coba lagi.',
+          assetPath: 'assets/images/alert/warning.png',
+          accentColor: const Color(0xFFE0637A),
         );
         return;
       }
       if (faces.length > 1) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Terdeteksi lebih dari 1 wajah, pastikan hanya '
-                'wajah Anda di frame'),
-          ),
+        await showCustomAlert(
+          context: context,
+          title: 'Gagal',
+          message: 'Terdeteksi lebih dari 1 wajah, pastikan hanya wajah Anda di frame.',
+          assetPath: 'assets/images/alert/warning.png',
+          accentColor: const Color(0xFFE0637A),
         );
         return;
       }
@@ -142,8 +148,12 @@ class _FaceProfileRegisterPageState extends State<FaceProfileRegisterPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengambil foto: $e')),
+      await showCustomAlert(
+        context: context,
+        title: 'Gagal',
+        message: 'Gagal mengambil foto: ${e.toString().replaceFirst('Exception: ', '')}',
+        assetPath: 'assets/images/alert/warning.png',
+        accentColor: const Color(0xFFE0637A),
       );
     }
   }
@@ -188,9 +198,15 @@ class _FaceProfileRegisterPageState extends State<FaceProfileRegisterPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wajah berhasil didaftarkan')),
+      await showCustomAlert(
+        context: context,
+        title: 'Berhasil',
+        message: 'Wajah berhasil didaftarkan.',
+        assetPath: 'assets/images/alert/check-mark.png',
+        accentColor: const Color(0xFF4CAF7D),
       );
+
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
@@ -199,8 +215,12 @@ class _FaceProfileRegisterPageState extends State<FaceProfileRegisterPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _step = _RegisterStep.review);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      await showCustomAlert(
+        context: context,
+        title: 'Gagal',
+        message: e.toString().replaceFirst('Exception: ', ''),
+        assetPath: 'assets/images/alert/warning.png',
+        accentColor: const Color(0xFFE0637A),
       );
     }
   }

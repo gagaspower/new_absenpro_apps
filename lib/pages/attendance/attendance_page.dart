@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:absenpro/helpers/device_helper.dart';
 import 'package:absenpro/helpers/permisssion_helper.dart';
 import 'package:absenpro/services/attendance/attendance_service.dart';
+import 'package:absenpro/widgets/custom_alert_dialog.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -141,10 +142,12 @@ class _AbsenSelfiePageState extends State<AbsenSelfiePage> {
 
       if (faces.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Wajah tidak terdeteksi, coba lagi'),
-          ),
+        await showCustomAlert(
+          context: context,
+          title: 'Gagal',
+          message: 'Wajah tidak terdeteksi, coba lagi.',
+          assetPath: 'assets/images/alert/warning.png',
+          accentColor: const Color(0xFFE0637A),
         );
         return;
       }
@@ -155,8 +158,12 @@ class _AbsenSelfiePageState extends State<AbsenSelfiePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengambil foto: $e')),
+      await showCustomAlert(
+        context: context,
+        title: 'Gagal',
+        message: 'Gagal mengambil foto: ${e.toString().replaceFirst('Exception: ', '')}',
+        assetPath: 'assets/images/alert/warning.png',
+        accentColor: const Color(0xFFE0637A),
       );
     }
   }
@@ -210,21 +217,26 @@ class _AbsenSelfiePageState extends State<AbsenSelfiePage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isCheckIn
-                ? 'Absen masuk berhasil dicatat'
-                : 'Absen pulang berhasil dicatat',
-          ),
-        ),
+      await showCustomAlert(
+        context: context,
+        title: 'Berhasil',
+        message: widget.isCheckIn
+            ? 'Absen masuk berhasil dicatat.'
+            : 'Absen pulang berhasil dicatat.',
+        assetPath: 'assets/images/alert/check-mark.png',
+        accentColor: const Color(0xFF4CAF7D),
       );
+      if (!mounted) return;
       Navigator.pop(context, attendance);
     } catch (e) {
       if (!mounted) return;
       setState(() => _step = _AbsenStep.review);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      await showCustomAlert(
+        context: context,
+        title: 'Gagal',
+        message: e.toString().replaceFirst('Exception: ', ''),
+        assetPath: 'assets/images/alert/warning.png',
+        accentColor: const Color(0xFFE0637A),
       );
     }
   }

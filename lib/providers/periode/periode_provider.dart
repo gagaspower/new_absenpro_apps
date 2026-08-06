@@ -26,9 +26,6 @@ class PeriodeProvider extends ChangeNotifier {
       final result = await _periodeService.getPeriode();
       periodeList = result;
 
-      // Default pilihan: periode bulan & tahun berjalan (format value
-      // backend "M - YYYY", tanpa leading zero, misal "8 - 2026").
-      // Fallback ke item pertama kalau tidak ditemukan yang cocok.
       if (selectedPeriode == null && periodeList.isNotEmpty) {
         final now = DateTime.now();
         final currentValue = '${now.month} - ${now.year}';
@@ -38,10 +35,27 @@ class PeriodeProvider extends ChangeNotifier {
         );
       }
 
+      if (selectedPeriode == null && periodeList.isEmpty) {
+        selectedPeriode = PeriodeModel(
+          periodeValue: '${DateTime.now().month} - ${DateTime.now().year}',
+          periodeLabel: 'Periode saat ini',
+        );
+        periodeList = [selectedPeriode!];
+      }
+
       isLoading = false;
       notifyListeners();
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (selectedPeriode == null) {
+        selectedPeriode = PeriodeModel(
+          periodeValue: '${DateTime.now().month} - ${DateTime.now().year}',
+          periodeLabel: 'Periode saat ini',
+        );
+      }
+      if (periodeList.isEmpty) {
+        periodeList = [selectedPeriode!];
+      }
       isLoading = false;
       notifyListeners();
     }
