@@ -264,7 +264,7 @@ class _HistoriPageState extends State<HistoriPage>
               Navigator.pop(sheetContext);
               context
                   .read<AttendanceHistoryProvider>()
-                  .fetchInitial(periode: periode.value);
+                  .fetchInitial(periode: periode.periodeValue);
             },
             child: Container(
               width: double.infinity,
@@ -304,6 +304,7 @@ class _HistoriPageState extends State<HistoriPage>
     );
   }
 
+  /// Bottom sheet daftar periode, dipilih lewat tap item.
   /// Bottom sheet daftar periode, dipilih lewat tap item.
   void _showPeriodeBottomSheet(
     BuildContext context,
@@ -379,7 +380,9 @@ class _HistoriPageState extends State<HistoriPage>
                       onTap: () {
                         periodeProvider.selectPeriode(periode);
                         Navigator.pop(sheetContext);
-                        // TODO: refetch data absen berdasarkan periode yang baru dipilih
+                        context
+                            .read<AttendanceHistoryProvider>()
+                            .fetchInitial(periode: periode.periodeValue);
                       },
                     );
                   },
