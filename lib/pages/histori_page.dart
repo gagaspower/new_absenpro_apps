@@ -1,4 +1,6 @@
 import 'package:absenpro/models/attendance_history/attendance_history_model.dart';
+import 'package:absenpro/providers/periode/periode_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 
 class HistoriPage extends StatefulWidget {
@@ -58,6 +60,7 @@ class _HistoriPageState extends State<HistoriPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    context.read<PeriodeProvider>().fetchPeriode();
   }
 
   @override
@@ -153,22 +156,166 @@ class _HistoriPageState extends State<HistoriPage>
   }
 
   Widget _buildAbsenList() {
-    if (_dataAbsen.isEmpty) {
-      return Center(
-        child: const Text(
-          'Belum ada histori absensi',
-          style: TextStyle(color: Colors.black38, fontSize: 13),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPeriodeFilter(),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _dataAbsen.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Belum ada histori absensi',
+                    style: TextStyle(color: Colors.black38, fontSize: 13),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _dataAbsen.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) => _AbsenCard(
+                    attendance: _dataAbsen[index],
+                  ),
+                ),
         ),
-      );
-    }
+      ],
+    );
+  }
 
-    return ListView.separated(
+  /// Tombol filter periode: putih tanpa border, suffix ikon panah bawah.
+  /// Ketika ditekan, menampilkan bottom sheet berisi daftar periode.
+  Widget _buildPeriodeFilter() {
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _dataAbsen.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _AbsenCard(
-        attendance: _dataAbsen[index],
+      child: Consumer<PeriodeProvider>(
+        builder: (context, periodeProvider, _) {
+          final selected = periodeProvider.selectedPeriode;
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: periodeProvider.periodeList.isEmpty
+                ? null
+                : () => _showPeriodeBottomSheet(context, periodeProvider),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    periodeProvider.isLoading
+                        ? 'Memuat periode...'
+                        : (selected?.periodeLabel ?? 'Pilih Periode'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down,
+                      size: 20, color: Colors.black45),
+                ],
+              ),
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  /// Bottom sheet daftar periode, dipilih lewat tap item.
+  void _showPeriodeBottomSheet(
+    BuildContext context,
+    PeriodeProvider periodeProvider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pilih Periode',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: periodeProvider.periodeList.length,
+                  itemBuilder: (context, index) {
+                    final periode = periodeProvider.periodeList[index];
+                    final isSelected = periode.periodeValue ==
+                        periodeProvider.selectedPeriode?.periodeValue;
+
+                    return ListTile(
+                      title: Text(
+                        periode.periodeLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? primaryTeal : Colors.black87,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle,
+                              color: primaryTeal, size: 20)
+                          : null,
+                      onTap: () {
+                        periodeProvider.selectPeriode(periode);
+                        Navigator.pop(sheetContext);
+                        // TODO: refetch data absen berdasarkan periode yang
+                        // baru dipilih, misal:
+                        // context.read<AbsenHistoryProvider>()
+                        //   .fetchByPeriode(periode.value);
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -26,9 +26,17 @@ class PeriodeProvider extends ChangeNotifier {
       final result = await _periodeService.getPeriode();
       periodeList = result;
 
-      // Set default pilihan ke periode pertama (biasanya bulan berjalan)
-      // kalau belum ada yang dipilih sebelumnya.
-      selectedPeriode ??= periodeList.isNotEmpty ? periodeList.first : null;
+      // Default pilihan: periode bulan & tahun berjalan (format value
+      // backend "M - YYYY", tanpa leading zero, misal "8 - 2026").
+      // Fallback ke item pertama kalau tidak ditemukan yang cocok.
+      if (selectedPeriode == null && periodeList.isNotEmpty) {
+        final now = DateTime.now();
+        final currentValue = '${now.month} - ${now.year}';
+        selectedPeriode = periodeList.firstWhere(
+          (p) => p.periodeValue == currentValue,
+          orElse: () => periodeList.first,
+        );
+      }
 
       isLoading = false;
       notifyListeners();
