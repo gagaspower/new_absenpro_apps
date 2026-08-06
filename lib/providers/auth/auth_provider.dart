@@ -124,4 +124,13 @@ class AuthProvider extends ChangeNotifier {
     await StorageService.saveUser(updatedUser.toJson());
     notifyListeners();
   }
+
+  /// Replace seluruh data user dengan data terbaru dari backend setelah
+  /// berhasil registrasi wajah (endpoint face-registration mengembalikan
+  /// user lengkap, termasuk employee.faceProfile yang baru terdaftar).
+  Future<void> updateUserFromServer(UserModel updatedUser) async {
+    user = updatedUser;
+    await StorageService.saveUser(updatedUser.toJson());
+    notifyListeners();
+  }
 }

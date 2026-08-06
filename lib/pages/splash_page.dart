@@ -3,6 +3,7 @@ import 'package:absenpro/pages/dashboard_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:absenpro/pages/face_profile/face_profile_register_page.dart';
 
 /// Halaman pertama yang tampil saat app dibuka.
 /// Mengecek apakah user masih punya sesi login tersimpan (token + data user
@@ -27,11 +28,19 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
+    Widget nextPage;
+    if (!isLoggedIn) {
+      nextPage = const LoginPage();
+    } else {
+      final hasFaceProfile = authProvider.user?.employee?.faceProfile != null;
+      nextPage = hasFaceProfile
+          ? const DashboardPage()
+          : const FaceProfileRegisterPage();
+    }
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => isLoggedIn ? const DashboardPage() : const LoginPage(),
-      ),
+      MaterialPageRoute(builder: (_) => nextPage),
     );
   }
 

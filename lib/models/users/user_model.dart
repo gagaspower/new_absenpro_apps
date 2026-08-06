@@ -141,11 +141,11 @@ class EmployeeModel {
           : null,
       // Backend kadang mengirim data absen hari ini sebagai "attendance_today"
       // atau sebagai "today_attendance". Terima kedua format tersebut.
-      attendanceToday: (json['attendance_today'] ?? json['today_attendance']) != null
-          ? AttendanceModel.fromJson(
-              (json['attendance_today'] ?? json['today_attendance'])
-                  as Map<String, dynamic>)
-          : null,
+      attendanceToday:
+          (json['attendance_today'] ?? json['today_attendance']) != null
+              ? AttendanceModel.fromJson((json['attendance_today'] ??
+                  json['today_attendance']) as Map<String, dynamic>)
+              : null,
     );
   }
 
@@ -165,7 +165,10 @@ class EmployeeModel {
     };
   }
 
-  EmployeeModel copyWith({AttendanceModel? attendanceToday}) {
+  EmployeeModel copyWith({
+    AttendanceModel? attendanceToday,
+    FaceProfileModel? faceProfile,
+  }) {
     return EmployeeModel(
       id: id,
       employeeCode: employeeCode,
@@ -176,7 +179,7 @@ class EmployeeModel {
       position: position,
       branch: branch,
       shift: shift,
-      faceProfile: faceProfile,
+      faceProfile: faceProfile ?? this.faceProfile,
       attendanceToday: attendanceToday ?? this.attendanceToday,
     );
   }

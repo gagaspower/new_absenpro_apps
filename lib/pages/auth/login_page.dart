@@ -2,6 +2,7 @@ import 'package:absenpro/pages/dashboard_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:absenpro/pages/face_profile/face_profile_register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -182,9 +183,15 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (success) {
+      final hasFaceProfile = authProvider.user?.employee?.faceProfile != null;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const DashboardPage()),
+        MaterialPageRoute(
+          builder: (_) => hasFaceProfile
+              ? const DashboardPage()
+              : const FaceProfileRegisterPage(),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

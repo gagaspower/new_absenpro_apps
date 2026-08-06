@@ -1,6 +1,6 @@
 class AppConfig {
   static const String baseUrl =
-      "https://notebooks-retained-char-commissioners.trycloudflare.com/api/";
+      "https://estimation-society-beast-winner.trycloudflare.com/api/";
 
   /// Base URL untuk file yang disimpan di storage Laravel (foto, dsb).
   /// TODO: sesuaikan/konfirmasi ke backend — asumsi struktur umum Laravel
