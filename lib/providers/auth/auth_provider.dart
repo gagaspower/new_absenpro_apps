@@ -81,6 +81,26 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset/ubah password pengguna.
+  /// Return true jika berhasil, false jika gagal (errorMessage terisi).
+  Future<bool> changePassword({required String newPassword}) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.resetPassword(password: newPassword);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Update status absen hari ini secara LOKAL (di state + local storage),
   /// dipanggil setelah AbsenSelfiePage berhasil submit absen ke server.
   /// Tujuannya supaya tombol Absen masuk/pulang di Home langsung ke-lock

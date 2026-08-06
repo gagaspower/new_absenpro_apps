@@ -62,4 +62,31 @@ class AuthService {
       await StorageService.clear();
     }
   }
+
+  /// Reset/ubah password pengguna.
+  /// Endpoint: PUT reference/auth/reset-password
+  /// Melempar Exception dengan pesan dari backend jika gagal.
+  Future<void> resetPassword({required String password}) async {
+    try {
+      final response = await _apiService.put(
+        'reference/auth/reset-password',
+        {
+          'password': password,
+          'password_confirmation': password,
+        },
+      );
+
+      final body = response.data;
+
+      if (body['status'] != true) {
+        throw Exception(body['message'] ?? 'Gagal ubah password');
+      }
+    } on DioException catch (e) {
+      // Pesan error dari backend
+      final message = e.response?.data is Map
+          ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
+          : 'Tidak dapat terhubung ke server';
+      throw Exception(message);
+    }
+  }
 }

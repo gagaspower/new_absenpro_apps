@@ -1,5 +1,6 @@
 import 'package:absenpro/pages/auth/login_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
+import 'package:absenpro/pages/reset_password/reset_password_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -195,7 +196,11 @@ class _ProfilPageState extends State<ProfilPage> {
                           iconColor: const Color(0xFF4A87C9),
                           label: 'Ganti Password',
                           onTap: () {
-                            // TODO: arahkan ke halaman ganti password
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const ResetPasswordPage()),
+                            );
                           },
                         ),
                         const Divider(height: 1, indent: 16, endIndent: 16),
