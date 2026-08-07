@@ -2,10 +2,12 @@ import 'package:absenpro/models/attendance/attendance_model.dart';
 import 'package:absenpro/models/users/user_model.dart';
 import 'package:absenpro/services/auth/auth_service.dart';
 import 'package:absenpro/services/storage_service.dart';
+import 'package:absenpro/services/attendance/attendance_service.dart';
 import 'package:flutter/material.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final AbsenService _absenService = AbsenService();
 
   bool isLoading = false;
   String? errorMessage;
@@ -143,6 +145,31 @@ class AuthProvider extends ChangeNotifier {
     user = updatedUser;
     await StorageService.saveUser(updatedUser.toJson());
     notifyListeners();
+  }
+
+  /// Sinkronkan attendance_today LANGSUNG dari server
+  /// (GET reference/absen/cek-hari-ini). Ini perbaikan untuk bug:
+  /// attendance_today sebelumnya hanya terisi saat login, jadi basi kalau
+  /// user tidak pernah logout dan hari sudah berganti.
+  Future<void> refreshTodayAttendance() async {
+    final currentUser = user;
+    final employee = currentUser?.employee;
+    if (currentUser == null || employee == null) return;
+
+    try {
+      final todayAttendance = await _absenService.getTodayAttendance();
+
+      final updatedEmployee = employee.withAttendanceToday(todayAttendance);
+      final updatedUser = currentUser.copyWith(employee: updatedEmployee);
+
+      user = updatedUser;
+      await StorageService.saveUser(updatedUser.toJson());
+      notifyListeners();
+    } catch (_) {
+      // Gagal sinkron (mis. tidak ada koneksi) — biarkan data lokal apa
+      // adanya, jangan bikin UI error cuma karena request ini gagal.
+      // Nanti disinkron lagi di kesempatan berikutnya.
+    }
   }
 
   /// Replace seluruh data user dengan data terbaru dari backend setelah

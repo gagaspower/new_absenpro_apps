@@ -81,8 +81,13 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
         Expanded(
           child: Consumer<AttendanceHistoryProvider>(
             builder: (context, historyProvider, _) {
-              if (historyProvider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+              if (historyProvider.isLoading && historyProvider.items.isEmpty) {
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: 4,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, __) => const _AbsenSkeletonCard(),
+                );
               }
 
               if (historyProvider.errorMessage != null) {
@@ -113,14 +118,8 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
                 itemBuilder: (context, index) {
                   if (index >= historyProvider.items.length) {
                     return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
-                        ),
-                      ),
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: _AbsenSkeletonCard(),
                     );
                   }
 
@@ -302,6 +301,162 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
               const SizedBox(height: 12),
             ],
           ),
+        );
+      },
+    );
+  }
+}
+
+class _AbsenSkeletonCard extends StatelessWidget {
+  const _AbsenSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _SkeletonBox(
+                  height: 13,
+                  width: 120,
+                  borderRadius: 6,
+                ),
+              ),
+              const SizedBox(width: 12),
+              _SkeletonBox(
+                height: 24,
+                width: 72,
+                borderRadius: 8,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _SkeletonBox(
+                height: 44,
+                width: 44,
+                borderRadius: 12,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SkeletonBox(height: 13, width: 90, borderRadius: 6),
+                    const SizedBox(height: 8),
+                    _SkeletonBox(height: 12, width: 60, borderRadius: 6),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _SkeletonBox(height: 13, width: 90, borderRadius: 6),
+                    const SizedBox(height: 8),
+                    _SkeletonBox(height: 12, width: 60, borderRadius: 6),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  final double height;
+  final double width;
+  final double borderRadius;
+
+  const _SkeletonBox({
+    required this.height,
+    required this.width,
+    this.borderRadius = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SkeletonShimmer(
+      child: Container(
+        height: height,
+        width: width,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonShimmer extends StatefulWidget {
+  final Widget child;
+
+  const _SkeletonShimmer({required this.child});
+
+  @override
+  State<_SkeletonShimmer> createState() => _SkeletonShimmerState();
+}
+
+class _SkeletonShimmerState extends State<_SkeletonShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment(-1.0 + (_controller.value * 2.0), 0),
+              end: Alignment(0.0 + (_controller.value * 2.0), 0),
+              colors: [
+                Colors.transparent,
+                Colors.white.withOpacity(0.55),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: widget.child,
         );
       },
     );

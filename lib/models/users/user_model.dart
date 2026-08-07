@@ -184,6 +184,26 @@ class EmployeeModel {
     );
   }
 
+  /// Khusus untuk attendanceToday — SELALU menimpa nilainya, termasuk
+  /// jadi null (beda dengan copyWith biasa yang menganggap null = "tidak
+  /// diubah"). Dipakai saat sinkron ke server mengembalikan
+  /// todayAttendance: null, artinya user memang belum absen hari ini.
+  EmployeeModel withAttendanceToday(AttendanceModel? attendanceToday) {
+    return EmployeeModel(
+      id: id,
+      employeeCode: employeeCode,
+      fullName: fullName,
+      address: address,
+      photoPath: photoPath,
+      department: department,
+      position: position,
+      branch: branch,
+      shift: shift,
+      faceProfile: faceProfile,
+      attendanceToday: attendanceToday,
+    );
+  }
+
   /// URL foto profil, diprioritaskan dari foto referensi wajah
   /// (face_profile.reference_photo_path), fallback ke photo_path biasa.
   /// Return null kalau dua-duanya belum ada (biar UI bisa fallback ke

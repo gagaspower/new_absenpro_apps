@@ -13,7 +13,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const Color primaryTeal = Color(0xFF2FC7CF);
   static const Color absenPulangColor = Color(0xFFFF9B9B);
   static const Color disabledBg = Color(0xFFE0E0E0);
@@ -33,10 +33,29 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       setState(() => _greeting = TimeHelper.greeting());
     });
+
+    // Sinkron status absen hari ini ke server begitu Home pertama kali
+    // dibuka — jangan cuma andalkan cache attendance_today dari login
+    // terakhir.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthProvider>().refreshTodayAttendance();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Sinkron ulang juga saat app kembali dibuka dari background —
+    // menutup kasus di laporan bug: user tidak logout, app dibiarkan
+    // idle sampai hari berganti, lalu dibuka lagi.
+    if (state == AppLifecycleState.resumed) {
+      context.read<AuthProvider>().refreshTodayAttendance();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     super.dispose();
   }
@@ -79,9 +98,7 @@ class _HomePageState extends State<HomePage> {
     // Kalau berhasil, simpan data attendance terbaru dari backend ke local storage
     // agar status absen di Home langsung ter-update.
     if (attendance != null && mounted) {
-      await context
-          .read<AuthProvider>()
-          .updateAttendanceFromServer(attendance);
+      await context.read<AuthProvider>().updateAttendanceFromServer(attendance);
     }
   }
 
