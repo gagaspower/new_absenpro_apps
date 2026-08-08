@@ -22,6 +22,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
 
   static const Color lightGray = Color(0xFFE0E0E0);
   static const Color primaryTeal = Color(0xFF2FC7CF);
+  final formkey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -50,19 +51,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
 
   void _submitForm() {
     // Validasi input sebelum submit
-    if (_reasonController.text.isEmpty ||
-        _selectedLeaveType == null ||
-        _startDateController.text.isEmpty ||
-        _endDateController.text.isEmpty ||
-        _totalDaysController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap lengkapi semua field yang wajib')),
-      );
-      return;
-    }
-
-    // Lakukan submit ke backend atau logika lainnya di sini
-    // Misalnya, panggil API untuk mengirim data cuti/izin
   }
 
   @override
@@ -81,7 +69,8 @@ class _FormCutiPageState extends State<FormCutiPage> {
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
-            onPressed: _submitForm,
+            onPressed:
+                formkey.currentState?.validate() == true ? _submitForm : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryTeal,
               padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -203,6 +192,12 @@ class _FormCutiPageState extends State<FormCutiPage> {
             label: 'Alamat yang bisa dihubungi',
             controller: _addressController,
             multiline: true,
+            validator: (String? value) {
+              if (value == null || value.isEmpty) {
+                return 'Harap isi alamat yang bisa dihubungi';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16.0),
           _buildInputField(
@@ -210,6 +205,12 @@ class _FormCutiPageState extends State<FormCutiPage> {
             controller: _phoneController,
             multiline: true,
             keyboardType: TextInputType.phone,
+            validator: (String? value) {
+              if (value == null || value.isEmpty) {
+                return 'Harap isi no. telepon yang bisa dihubungi';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16.0),
         ],
