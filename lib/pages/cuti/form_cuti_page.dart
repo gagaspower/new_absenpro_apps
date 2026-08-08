@@ -49,6 +49,31 @@ class _FormCutiPageState extends State<FormCutiPage> {
     super.dispose();
   }
 
+  _totalDaysControllerListener() {
+    // Hitung total hari dari tanggal mulai dan selesai
+    if (_startDateController.text.isNotEmpty &&
+        _endDateController.text.isNotEmpty) {
+      final startParts = _startDateController.text.split('/');
+      final endParts = _endDateController.text.split('/');
+
+      if (startParts.length == 3 && endParts.length == 3) {
+        final startDate = DateTime(
+          int.parse(startParts[2]),
+          int.parse(startParts[1]),
+          int.parse(startParts[0]),
+        );
+        final endDate = DateTime(
+          int.parse(endParts[2]),
+          int.parse(endParts[1]),
+          int.parse(endParts[0]),
+        );
+
+        final difference = endDate.difference(startDate).inDays + 1;
+        _totalDaysController.text = difference.toString();
+      }
+    }
+  }
+
   void _submitForm() {
     // Validasi input sebelum submit
   }
@@ -123,6 +148,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
           _buildDatePickerField(
             label: 'Tanggal Mulai',
             controller: _startDateController,
+            onChanged: _totalDaysControllerListener,
             validator: (String? value) {
               if (value == null || value.isEmpty) {
                 return 'Harap pilih tanggal mulai';
@@ -134,6 +160,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
           _buildDatePickerField(
             label: 'Tanggal Selesai',
             controller: _endDateController,
+            onChanged: _totalDaysControllerListener,
             validator: (String? value) {
               if (value == null || value.isEmpty) {
                 return 'Harap pilih tanggal selesai';
@@ -225,7 +252,8 @@ class _FormCutiPageState extends State<FormCutiPage> {
       TextInputType? keyboardType,
       bool multiline = false,
       FormFieldValidator<String>? validator,
-      bool readOnly = false}) {
+      bool readOnly = false,
+      VoidCallback? onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,6 +280,11 @@ class _FormCutiPageState extends State<FormCutiPage> {
             maxLines: multiline ? null : 1,
             readOnly: readOnly,
             validator: validator,
+            onChanged: onChanged != null
+                ? (_) {
+                    onChanged();
+                  }
+                : null,
           ),
         ),
       ],
@@ -261,7 +294,8 @@ class _FormCutiPageState extends State<FormCutiPage> {
   Widget _buildDatePickerField(
       {required String label,
       required TextEditingController controller,
-      FormFieldValidator<String>? validator}) {
+      FormFieldValidator<String>? validator,
+      VoidCallback? onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -278,7 +312,11 @@ class _FormCutiPageState extends State<FormCutiPage> {
           ),
           child: TextFormField(
             controller: controller,
-            readOnly: true,
+            onChanged: onChanged != null
+                ? (_) {
+                    onChanged();
+                  }
+                : null,
             onTap: () async {
               DateTime? pickedDate = await showDatePicker(
                 context: context,
