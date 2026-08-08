@@ -199,79 +199,29 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 
   Widget _showModalBottomSheet(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 40,
-            height: 4,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16.0),
-          Consumer<LeaveTypeProvider>(
-            builder: (context, provLeaveType, _) {
-              if (provLeaveType.isLoading) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              if (provLeaveType.errorMessage != null) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        provLeaveType.errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12.0),
-                      ElevatedButton(
-                        onPressed: () =>
-                            provLeaveType.fetchLeaveTypes(force: true),
-                        child: const Text('Coba Lagi'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (provLeaveType.leaveTypeList.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Center(child: Text('Tidak ada data jenis cuti')),
-                );
-              }
-
-              return ListView.separated(
-                shrinkWrap: true,
-                itemCount: provLeaveType.leaveTypeList.length,
-                itemBuilder: (context, index) {
-                  final leaveType = provLeaveType.leaveTypeList[index];
-                  return ListTile(
-                    title: Text(leaveType.name),
-                    onTap: () {
-                      provLeaveType.selectLeaveType(leaveType);
-                      Navigator.pop(context);
-                    },
-                  );
+    return SafeArea(child: Consumer<LeaveTypeProvider>(
+      builder: (context, provLeaveType, _) {
+        if (provLeaveType.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (provLeaveType.errorMessage != null) {
+          return Center(child: Text(provLeaveType.errorMessage!));
+        } else {
+          final leaveTypes = provLeaveType.leaveTypeList;
+          return ListView.builder(
+            itemCount: leaveTypes.length,
+            itemBuilder: (context, index) {
+              final leaveType = leaveTypes[index];
+              return ListTile(
+                title: Text(leaveType.name),
+                onTap: () {
+                  provLeaveType.selectLeaveType(leaveType);
+                  Navigator.pop(context);
                 },
-                separatorBuilder: (context, index) => const Divider(),
               );
             },
-          ),
-        ],
-      ),
-    );
+          );
+        }
+      },
+    ));
   }
 }

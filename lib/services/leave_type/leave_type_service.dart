@@ -8,16 +8,24 @@ class LeaveTypeService {
   Future<List<LeaveTypeModel>> getLeaveTypes() async {
     try {
       final response = await _apiService.get('reference/jenis-cuti');
-      print(response.data);
+      final raw = response.data;
 
-      final body = response.data;
-      if (body['data'] is List) {
+      // raw is expected to be a Map like {"status":.., "message":.., "data": ...}
+      dynamic body = raw is Map ? raw['data'] : raw;
+
+      // Handle Laravel-style pagination: {"data": {"data": [...]}}
+      if (body is Map && body['data'] is List) {
+        body = body['data'];
+      }
+
+      if (body is List) {
         return body
             .map((e) => LeaveTypeModel.fromJson(e as Map<String, dynamic>))
             .toList();
       }
 
-      throw Exception('Response jenis cuti tidak valid');
+      throw Exception(
+          'Response jenis cuti tidak valid: unexpected shape ${body.runtimeType}');
     } on DioException catch (e) {
       final message = e.response?.data is Map
           ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')

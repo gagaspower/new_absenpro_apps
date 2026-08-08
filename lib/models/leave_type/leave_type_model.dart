@@ -6,7 +6,7 @@ class LeaveTypeModel {
   final String unit;
   final bool isPaid;
   final bool deductQuota;
-  final bool requireAttachment;
+  final int requireAttachment;
   final int? maxDaysPerYear;
   final int? minDaysNotice;
 
