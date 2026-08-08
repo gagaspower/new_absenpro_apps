@@ -15,8 +15,13 @@ class _FormCutiPageState extends State<FormCutiPage> {
   final TextEditingController _endDateController = TextEditingController();
   final TextEditingController _startTimeController = TextEditingController();
   final TextEditingController _endTimeController = TextEditingController();
+  final TextEditingController _totalDaysController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  dynamic _selectedLeaveType; // simpan objek leave type yang dipilih
 
   static const Color lightGray = Color(0xFFE0E0E0);
+  static const Color primaryTeal = Color(0xFF2FC7CF);
 
   @override
   void initState() {
@@ -37,7 +42,27 @@ class _FormCutiPageState extends State<FormCutiPage> {
     _endDateController.dispose();
     _startTimeController.dispose();
     _endTimeController.dispose();
+    _totalDaysController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
+  }
+
+  void _submitForm() {
+    // Validasi input sebelum submit
+    if (_reasonController.text.isEmpty ||
+        _selectedLeaveType == null ||
+        _startDateController.text.isEmpty ||
+        _endDateController.text.isEmpty ||
+        _totalDaysController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Harap lengkapi semua field yang wajib')),
+      );
+      return;
+    }
+
+    // Lakukan submit ke backend atau logika lainnya di sini
+    // Misalnya, panggil API untuk mengirim data cuti/izin
   }
 
   @override
@@ -53,6 +78,23 @@ class _FormCutiPageState extends State<FormCutiPage> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: _submitForm,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryTeal,
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
+            child: const Text(
+              'Kirim',
+              style: TextStyle(fontSize: 16.0, color: Colors.white),
+            ),
+          ),
+        ),
         body: SafeArea(child: _buildBody()));
   }
 
@@ -61,71 +103,128 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 
   Widget _buildForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInputField(
-          label: 'Alasan Cuti',
-          controller: _reasonController,
-        ),
-        const SizedBox(height: 16.0),
-        const Text('Jenis Cuti/Izin'),
-        const SizedBox(height: 8.0),
-        Consumer<LeaveTypeProvider>(
-          builder: (context, provLeaveType, _) {
-            final selected = provLeaveType.selectedLeaveType;
-            return SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: _showModalBottomSheet,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 12.0, horizontal: 8.0),
-                  shadowColor: Colors.transparent,
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  side: const BorderSide(color: lightGray, width: 1.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      selected?.name ?? 'Pilih',
-                      style: TextStyle(
-                        color: selected == null ? lightGray : Colors.black87,
-                      ),
-                    ),
-                    const Icon(Icons.arrow_drop_down),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 16.0),
-        _buildDatePickerField(
-          label: 'Tanggal Mulai',
-          controller: _startDateController,
-        ),
-        const SizedBox(height: 16.0),
-        _buildDatePickerField(
-          label: 'Tanggal Selesai',
-          controller: _endDateController,
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInputField(
+            label: 'Alasan',
+            controller: _reasonController,
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'Jenis Cuti/Izin',
+            controller:
+                TextEditingController(text: _selectedLeaveType?.name ?? ''),
+            validator: (String? value) {
+              if (_selectedLeaveType == null) {
+                return 'Harap pilih jenis cuti/izin';
+              }
+              return null;
+            },
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (context) => _showModalBottomSheet(context),
+              );
+            },
+          ),
+          const SizedBox(height: 16.0),
+          _buildDatePickerField(
+            label: 'Tanggal Mulai',
+            controller: _startDateController,
+            validator: (String? value) {
+              if (value == null || value.isEmpty) {
+                return 'Harap pilih tanggal mulai';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16.0),
+          _buildDatePickerField(
+            label: 'Tanggal Selesai',
+            controller: _endDateController,
+            validator: (String? value) {
+              if (value == null || value.isEmpty) {
+                return 'Harap pilih tanggal selesai';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'Jam Mulai',
+            controller: _startTimeController,
+            keyboardType: TextInputType.datetime,
+            onTap: () async {
+              TimeOfDay? pickedTime = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+
+              if (pickedTime != null) {
+                setState(() {
+                  _startTimeController.text =
+                      "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'Jam Selesai',
+            controller: _endTimeController,
+            keyboardType: TextInputType.datetime,
+            onTap: () async {
+              TimeOfDay? pickedTime = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+
+              if (pickedTime != null) {
+                setState(() {
+                  _endTimeController.text =
+                      "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'Total Hari',
+            controller: _totalDaysController,
+            keyboardType: TextInputType.number,
+            readOnly:
+                true, // Total hari dihitung otomatis dari tanggal mulai dan selesai
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'Alamat yang bisa dihubungi',
+            controller: _addressController,
+            multiline: true,
+          ),
+          const SizedBox(height: 16.0),
+          _buildInputField(
+            label: 'No. Telepon yang bisa dihubungi',
+            controller: _phoneController,
+            multiline: true,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 16.0),
+        ],
+      ),
     );
   }
 
   Widget _buildInputField(
-      {required String label, required TextEditingController controller}) {
+      {required String label,
+      required TextEditingController controller,
+      VoidCallback? onTap,
+      TextInputType? keyboardType,
+      bool multiline = false,
+      FormFieldValidator<String>? validator,
+      bool readOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -140,13 +239,18 @@ class _FormCutiPageState extends State<FormCutiPage> {
               width: 1.0,
             ),
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding:
                   EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
             ),
+            onTap: onTap,
+            keyboardType: keyboardType ?? TextInputType.text,
+            maxLines: multiline ? null : 1,
+            readOnly: readOnly,
+            validator: validator,
           ),
         ),
       ],
@@ -154,7 +258,9 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 
   Widget _buildDatePickerField(
-      {required String label, required TextEditingController controller}) {
+      {required String label,
+      required TextEditingController controller,
+      FormFieldValidator<String>? validator}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -169,7 +275,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
               width: 1.0,
             ),
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             readOnly: true,
             onTap: () async {
@@ -199,29 +305,91 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 
   Widget _showModalBottomSheet(BuildContext context) {
-    return SafeArea(child: Consumer<LeaveTypeProvider>(
-      builder: (context, provLeaveType, _) {
-        if (provLeaveType.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (provLeaveType.errorMessage != null) {
-          return Center(child: Text(provLeaveType.errorMessage!));
-        } else {
-          final leaveTypes = provLeaveType.leaveTypeList;
-          return ListView.builder(
-            itemCount: leaveTypes.length,
-            itemBuilder: (context, index) {
-              final leaveType = leaveTypes[index];
-              return ListTile(
-                title: Text(leaveType.name),
-                onTap: () {
-                  provLeaveType.selectLeaveType(leaveType);
-                  Navigator.pop(context);
+    return Container(
+      padding: const EdgeInsets.only(top: 12.0, bottom: 16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16.0),
+
+          // Title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Pilih Jenis Cuti/Izin',
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1.0),
+
+          // List
+          Consumer<LeaveTypeProvider>(
+            builder: (context, provLeaveType, _) {
+              if (provLeaveType.leaveTypeList.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                itemCount: provLeaveType.leaveTypeList.length,
+                itemBuilder: (context, index) {
+                  final leaveType = provLeaveType.leaveTypeList[index];
+                  final bool isSelected = _selectedLeaveType == leaveType;
+
+                  return ListTile(
+                    title: Text(
+                      leaveType.name,
+                      style: TextStyle(
+                        color: isSelected ? Colors.green : Colors.black87,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedLeaveType = leaveType;
+                      });
+                      Navigator.pop(context);
+                    },
+                  );
                 },
+                separatorBuilder: (context, index) =>
+                    const Divider(height: 1.0),
               );
             },
-          );
-        }
-      },
-    ));
+          ),
+        ],
+      ),
+    );
   }
 }
