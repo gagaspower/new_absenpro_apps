@@ -16,7 +16,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
   final TextEditingController _startTimeController = TextEditingController();
   final TextEditingController _endTimeController = TextEditingController();
 
-  // static const Color primaryTeal = Color(0xFF2FC7CF);
   static const Color lightGray = Color(0xFFE0E0E0);
 
   @override
@@ -26,8 +25,8 @@ class _FormCutiPageState extends State<FormCutiPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provLeaveType =
           Provider.of<LeaveTypeProvider>(context, listen: false);
+      // Don't call reset() right after fetch — it wipes the list you just loaded.
       provLeaveType.fetchLeaveTypes();
-      provLeaveType.reset();
     });
   }
 
@@ -36,6 +35,8 @@ class _FormCutiPageState extends State<FormCutiPage> {
     _reasonController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
+    _startTimeController.dispose();
+    _endTimeController.dispose();
     super.dispose();
   }
 
@@ -68,36 +69,46 @@ class _FormCutiPageState extends State<FormCutiPage> {
           controller: _reasonController,
         ),
         const SizedBox(height: 16.0),
-        Text('Jenis Cuti/Izin'),
+        const Text('Jenis Cuti/Izin'),
         const SizedBox(height: 8.0),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: _showModalBottomSheet,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-              shadowColor: Colors.transparent,
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              side: const BorderSide(color: lightGray, width: 1.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5.0),
+        Consumer<LeaveTypeProvider>(
+          builder: (context, provLeaveType, _) {
+            final selected = provLeaveType.selectedLeaveType;
+            return SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: _showModalBottomSheet,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12.0, horizontal: 8.0),
+                  shadowColor: Colors.transparent,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  side: const BorderSide(color: lightGray, width: 1.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5.0),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      selected?.name ?? 'Pilih',
+                      style: TextStyle(
+                        color: selected == null ? lightGray : Colors.black87,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('Pilih', style: TextStyle(color: lightGray)),
-                Icon(Icons.arrow_drop_down),
-              ],
-            ),
-          ),
+            );
+          },
         ),
         const SizedBox(height: 16.0),
         _buildDatePickerField(
@@ -206,8 +217,40 @@ class _FormCutiPageState extends State<FormCutiPage> {
           const SizedBox(height: 16.0),
           Consumer<LeaveTypeProvider>(
             builder: (context, provLeaveType, _) {
+              if (provLeaveType.isLoading) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (provLeaveType.errorMessage != null) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        provLeaveType.errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12.0),
+                      ElevatedButton(
+                        onPressed: () =>
+                            provLeaveType.fetchLeaveTypes(force: true),
+                        child: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
               if (provLeaveType.leaveTypeList.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24.0),
+                  child: Center(child: Text('Tidak ada data jenis cuti')),
+                );
               }
 
               return ListView.separated(
@@ -218,7 +261,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
                   return ListTile(
                     title: Text(leaveType.name),
                     onTap: () {
-                      // Lakukan sesuatu saat tipe cuti dipilih
+                      provLeaveType.selectLeaveType(leaveType);
                       Navigator.pop(context);
                     },
                   );

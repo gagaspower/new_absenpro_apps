@@ -10,8 +10,8 @@ class LeaveTypeService {
       final response = await _apiService.get('reference/jenis-cuti');
       print(response.data);
 
-      final body = response.data.data;
-      if (body is List) {
+      final body = response.data;
+      if (body['data'] is List) {
         return body
             .map((e) => LeaveTypeModel.fromJson(e as Map<String, dynamic>))
             .toList();
