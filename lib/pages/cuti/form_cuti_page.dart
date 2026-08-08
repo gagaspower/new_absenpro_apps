@@ -36,7 +36,10 @@ class _FormCutiPageState extends State<FormCutiPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provLeaveType =
           Provider.of<LeaveTypeProvider>(context, listen: false);
-      provLeaveType.fetchLeaveTypes();
+      // force: true so newly-created jenis cuti on the backend always show up.
+      // Without this, the provider caches leaveTypeList and skips refetching
+      // whenever it's already non-empty — which is why it stayed stuck at 1 item.
+      provLeaveType.fetchLeaveTypes(force: true);
     });
 
     // These fire on ANY controller text change — typed or programmatic
@@ -124,8 +127,20 @@ class _FormCutiPageState extends State<FormCutiPage> {
         int.parse(endParts[0]),
       );
 
-      final difference = endDate.difference(startDate).inDays + 1;
-      _totalController.text = difference > 0 ? difference.toString() : '';
+      if (!endDate.isBefore(startDate)) {
+        // Hitung hari kerja (Senin-Sabtu), lewati hari Minggu.
+        int totalDays = 0;
+        for (DateTime day = startDate;
+            !day.isAfter(endDate);
+            day = day.add(const Duration(days: 1))) {
+          if (day.weekday != DateTime.sunday) {
+            totalDays++;
+          }
+        }
+        _totalController.text = totalDays > 0 ? totalDays.toString() : '';
+      } else {
+        _totalController.text = '';
+      }
     }
   }
 
