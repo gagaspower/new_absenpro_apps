@@ -128,6 +128,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
           const SizedBox(height: 16.0),
           _buildInputField(
             label: 'Jenis Cuti/Izin',
+            readOnly: true,
             controller:
                 TextEditingController(text: _selectedLeaveType?.name ?? ''),
             validator: (String? value) {
