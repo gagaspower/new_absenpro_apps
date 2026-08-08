@@ -3,6 +3,7 @@ import 'package:absenpro/helpers/time_helper.dart';
 import 'package:absenpro/models/attendance/attendance_model.dart';
 import 'package:absenpro/pages/attendance/attendance_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
+import 'package:absenpro/pages/cuti/form_cuti_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -169,11 +170,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildMenuItem(
-                  icon: Icons.send_outlined,
-                  label: 'Izin & Cuti',
-                  bgColor: const Color(0xFFFBE0E4),
-                  iconColor: const Color(0xFFE0637A),
-                ),
+                    icon: Icons.send_outlined,
+                    label: 'Izin & Cuti',
+                    bgColor: const Color(0xFFFBE0E4),
+                    iconColor: const Color(0xFFE0637A),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FormCutiPage(),
+                        ),
+                      );
+                    }),
                 _buildMenuItem(
                   icon: Icons.nightlight_round,
                   label: 'Lembur',
@@ -351,11 +359,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required String label,
     required Color bgColor,
     required Color iconColor,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: () {
-        // TODO: arahkan ke halaman terkait (Izin & Cuti / Lembur / Agenda)
-      },
+      onTap: onTap ??
+          () {
+            // TODO: arahkan ke halaman terkait (Izin & Cuti / Lembur / Agenda)
+          },
       child: Column(
         children: [
           Container(
