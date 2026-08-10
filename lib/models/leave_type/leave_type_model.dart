@@ -32,7 +32,7 @@ class LeaveTypeModel {
       unit: json['unit'] ?? '',
       isPaid: json['is_paid'] ?? false,
       deductQuota: json['deduct_quota'] ?? false,
-      requireAttachment: json['requires_attachment'] ?? false,
+      requireAttachment: json['requires_attachment'] ?? 0,
       maxDaysPerYear: json['max_days_per_year'],
       minDaysNotice: json['min_days_notice'],
     );

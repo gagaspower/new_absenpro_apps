@@ -3,7 +3,7 @@ import 'package:absenpro/helpers/time_helper.dart';
 import 'package:absenpro/models/attendance/attendance_model.dart';
 import 'package:absenpro/pages/attendance/attendance_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
-import 'package:absenpro/pages/cuti/form_cuti_page.dart';
+import 'package:absenpro/pages/permohonan_cuti/form_cuti_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

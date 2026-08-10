@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:absenpro/providers/leave_type/leave_type_provider.dart';
@@ -23,6 +26,10 @@ class _FormCutiPageState extends State<FormCutiPage> {
   final TextEditingController _totalController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+
+  File? _selectedDocument;
+  String? _selectedDocumentName;
+  String? _documentError;
 
   LeaveTypeModel? _selectedLeaveType;
   final formkey = GlobalKey<FormState>();
@@ -148,6 +155,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
     setState(() {
       _selectedLeaveType = leaveType;
       _leaveTypeController.text = leaveType.name;
+      _documentError = null;
 
       if (_isHourUnit) {
         if (_startDateController.text.isNotEmpty) {
@@ -192,10 +200,47 @@ class _FormCutiPageState extends State<FormCutiPage> {
         "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
   }
 
+  Future<void> _pickDocument() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+      allowMultiple: false,
+    );
+
+    if (result == null || result.files.single.path == null) return;
+
+    final pickedFile = result.files.single;
+    setState(() {
+      _selectedDocument = File(pickedFile.path!);
+      _selectedDocumentName = pickedFile.name;
+    });
+  }
+
+  void _removeDocument() {
+    setState(() {
+      _selectedDocument = null;
+      _selectedDocumentName = null;
+      _documentError = null;
+    });
+  }
+
   void _submitForm() {
-    if (formkey.currentState?.validate() != true) {
+    final isFormValid = formkey.currentState?.validate() == true;
+
+    // Jika jenis cuti/izin membutuhkan dokumen, file wajib dipilih.
+    final attachmentValid =
+        _selectedLeaveType?.requireAttachment != 1 || _selectedDocument != null;
+
+    setState(() {
+      _documentError = attachmentValid
+          ? null
+          : 'Dokumen pendukung wajib diupload untuk jenis cuti/izin ini.';
+    });
+
+    if (!isFormValid || !attachmentValid) {
       return;
     }
+
     // TODO: proses submit data cuti/izin
   }
 
@@ -343,8 +388,96 @@ class _FormCutiPageState extends State<FormCutiPage> {
                 : null,
           ),
           const SizedBox(height: 16.0),
+          _buildDocumentUploadField(),
+          const SizedBox(height: 16.0),
         ],
       ),
+    );
+  }
+
+  Widget _buildDocumentUploadField() {
+    final bool isRequired = _selectedLeaveType?.requireAttachment == 1;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Dokumen Pendukung'),
+            if (isRequired)
+              const Text(
+                ' *',
+                style: TextStyle(color: Colors.red),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        InkWell(
+          onTap: _pickDocument,
+          borderRadius: BorderRadius.circular(5.0),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              vertical: 12.0,
+              horizontal: 12.0,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(5.0),
+              border: Border.all(
+                color: _documentError != null ? Colors.red : _lightGray,
+              ),
+            ),
+            child: _selectedDocumentName == null
+                ? const Row(
+                    children: [
+                      Icon(Icons.upload_file, color: _primaryTeal),
+                      SizedBox(width: 8.0),
+                      Expanded(
+                        child: Text(
+                          'Pilih dokumen (PDF, PNG, JPG, JPEG)',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Icon(
+                        _selectedDocumentName!.toLowerCase().endsWith('.pdf')
+                            ? Icons.picture_as_pdf
+                            : Icons.image,
+                        color: _primaryTeal,
+                      ),
+                      const SizedBox(width: 8.0),
+                      Expanded(
+                        child: Text(
+                          _selectedDocumentName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Hapus dokumen',
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        onPressed: _removeDocument,
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 4.0),
+        if (_documentError != null)
+          Text(
+            _documentError!,
+            style: const TextStyle(color: Colors.red, fontSize: 12.0),
+          )
+        else
+          const Text(
+            'Format yang diperbolehkan: PDF, PNG, JPG, JPEG',
+            style: TextStyle(color: Colors.black54, fontSize: 12.0),
+          ),
+      ],
     );
   }
 
