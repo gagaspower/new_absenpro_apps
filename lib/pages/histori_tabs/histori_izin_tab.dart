@@ -1,29 +1,52 @@
+import 'package:absenpro/models/periode/periode_model.dart';
 import 'package:absenpro/widgets/empty_state_widget.dart';
+import 'package:absenpro/widgets/periode_filter_widget.dart';
 import 'package:flutter/material.dart';
 import 'histori_models.dart';
 
 class HistoriIzinTab extends StatelessWidget {
   final List<HistoriItem> items;
 
-  const HistoriIzinTab({super.key, required this.items});
+  /// Dipanggil saat periode berubah (lewat pilih periode atau refresh).
+  /// Wire ini ke provider/service histori izin untuk fetch ulang data.
+  final ValueChanged<PeriodeModel>? onPeriodeChanged;
+
+  const HistoriIzinTab({
+    super.key,
+    required this.items,
+    this.onPeriodeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const EmptyStateWidget(
-        assetPath: 'assets/images/oversight.svg',
-        title: 'Belum ada histori izin',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _HistoriCard(item: items[index]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PeriodeFilterWidget(
+          onPeriodeSelected: (p) => onPeriodeChanged?.call(p),
+          onRefreshTap: (p) => onPeriodeChanged?.call(p),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: items.isEmpty
+              ? const EmptyStateWidget(
+                  assetPath: 'assets/images/oversight.svg',
+                  title: 'Belum ada histori izin',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _HistoriCard(item: items[index]),
+                ),
+        ),
+      ],
     );
   }
 }
+
+// _HistoriCard TETAP SAMA seperti sebelumnya, tidak ada perubahan.
 
 class _HistoriCard extends StatelessWidget {
   final HistoriItem item;

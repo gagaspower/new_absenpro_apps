@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:absenpro/providers/leave_type/leave_type_provider.dart';
 import 'package:absenpro/providers/leave_request/leave_request_provider.dart';
+import 'package:absenpro/providers/leave_request/leave_request_history_provider.dart';
 
 void main() {
   // Atur warna status bar (sinyal, baterai, jam) secara global
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AttendanceHistoryProvider()),
         ChangeNotifierProvider(create: (_) => LeaveTypeProvider()),
         ChangeNotifierProvider(create: (_) => LeaveRequestProvider()),
+        ChangeNotifierProvider(create: (_) => LeaveRequestHistoryProvider()),
       ],
       child: MaterialApp(
         title: 'Absen Pro',

@@ -1,7 +1,9 @@
 import 'package:absenpro/models/attendance_history/attendance_history_model.dart';
+import 'package:absenpro/models/periode/periode_model.dart';
 import 'package:absenpro/providers/attendance/attendance_history_provider.dart';
 import 'package:absenpro/providers/periode/periode_provider.dart';
 import 'package:absenpro/widgets/empty_state_widget.dart';
+import 'package:absenpro/widgets/periode_filter_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,8 +16,6 @@ class HistoriAbsenTab extends StatefulWidget {
 
 class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
   final ScrollController _absenScrollController = ScrollController();
-
-  static const Color primaryTeal = Color(0xFF2FC7CF);
 
   @override
   void initState() {
@@ -50,8 +50,8 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
       final selected = context.read<PeriodeProvider>().selectedPeriode;
       if (selected != null) {
         context.read<AttendanceHistoryProvider>().fetchInitial(
-          periode: selected.periodeValue,
-        );
+              periode: selected.periodeValue,
+            );
       }
     });
   }
@@ -62,6 +62,12 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
     if (position.pixels >= position.maxScrollExtent - 200) {
       context.read<AttendanceHistoryProvider>().loadMore();
     }
+  }
+
+  void _onPeriodeChanged(PeriodeModel periode) {
+    context.read<AttendanceHistoryProvider>().fetchInitial(
+          periode: periode.periodeValue,
+        );
   }
 
   @override
@@ -76,7 +82,10 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPeriodeFilter(),
+        PeriodeFilterWidget(
+          onPeriodeSelected: _onPeriodeChanged,
+          onRefreshTap: _onPeriodeChanged,
+        ),
         const SizedBox(height: 12),
         Expanded(
           child: Consumer<AttendanceHistoryProvider>(
@@ -97,7 +106,8 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
                     child: Text(
                       historyProvider.errorMessage!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.black45, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.black45, fontSize: 13),
                     ),
                   ),
                 );
@@ -113,7 +123,8 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
               return ListView.separated(
                 controller: _absenScrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: historyProvider.items.length + (historyProvider.hasMore ? 1 : 0),
+                itemCount: historyProvider.items.length +
+                    (historyProvider.hasMore ? 1 : 0),
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   if (index >= historyProvider.items.length) {
@@ -130,179 +141,6 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildPeriodeFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Consumer<PeriodeProvider>(
-        builder: (context, periodeProvider, _) {
-          final selected = periodeProvider.selectedPeriode;
-
-          return Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    _showPeriodeBottomSheet(context, periodeProvider);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            periodeProvider.isLoading
-                                ? 'Memuat periode...'
-                                : (selected?.periodeLabel ?? 'Pilih Periode'),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Icon(Icons.keyboard_arrow_down,
-                            size: 20, color: Colors.black45),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  final activePeriode = periodeProvider.selectedPeriode;
-                  if (activePeriode != null) {
-                    context.read<AttendanceHistoryProvider>().fetchInitial(
-                      periode: activePeriode.periodeValue,
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: primaryTeal,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.refresh,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showPeriodeBottomSheet(
-    BuildContext context,
-    PeriodeProvider periodeProvider,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Pilih Periode',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: periodeProvider.periodeList.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    thickness: 1,
-                    indent: 20,
-                    endIndent: 20,
-                    color: Color(0xFFF0F0F0),
-                  ),
-                  itemBuilder: (context, index) {
-                    final periode = periodeProvider.periodeList[index];
-                    final isSelected = periode.periodeValue ==
-                        periodeProvider.selectedPeriode?.periodeValue;
-
-                    return ListTile(
-                      title: Text(
-                        periode.periodeLabel,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? primaryTeal : Colors.black87,
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle,
-                              color: primaryTeal, size: 20)
-                          : null,
-                      onTap: () {
-                        periodeProvider.selectPeriode(periode);
-                        Navigator.pop(sheetContext);
-                        context
-                            .read<AttendanceHistoryProvider>()
-                            .fetchInitial(periode: periode.periodeValue);
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -502,7 +340,8 @@ class _AbsenCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusInfo.color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
