@@ -55,7 +55,7 @@ class _HistoriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = historiStatusStyle(item.status);
+    final style = historiStatusStyle('');
 
     return Container(
       padding: const EdgeInsets.all(14),
