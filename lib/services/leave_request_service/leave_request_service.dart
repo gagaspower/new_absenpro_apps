@@ -4,21 +4,25 @@ import 'package:absenpro/services/api_service.dart';
 import 'package:dio/dio.dart';
 import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 
+/// Wrapper hasil paginasi histori permohonan cuti/izin: total data & isi
+/// baris untuk halaman (offset/limit) yang diminta.
+class LeaveRequestHistoryPage {
+  final int total;
+  final List<LeaveRequestModel> rows;
+
+  LeaveRequestHistoryPage({required this.total, required this.rows});
+}
+
 class LeaveRequestService {
   final ApiService _apiService = ApiService();
 
   /// Kirim pengajuan cuti/izin. `attachment` opsional, dikirim multipart
-  /// kalau user pilih dokumen (`ApiService.post` diasumsikan meneruskan
-  /// `data` apa adanya ke Dio, sama seperti `.get()` yang sudah dipakai
-  /// di LeaveTypeService — sesuaikan kalau signature ApiService berbeda).
+  /// kalau user pilih dokumen.
   Future<LeaveRequestModel> submitLeaveRequest(
     LeaveRequestPayload payload, {
     File? attachment,
   }) async {
     try {
-      // FormData.fromMap cuma terima String/MultipartFile — num/null di
-      // payload.toJson() harus di-stringify dulu, kalau tidak Dio lempar
-      // error tipe juga.
       final Map<String, dynamic> fields = payload.toJson().map(
             (key, value) => MapEntry(key, value?.toString() ?? ''),
           );
@@ -44,6 +48,51 @@ class LeaveRequestService {
 
       final message = raw is Map ? raw['message'] : null;
       throw Exception(message ?? 'Gagal mengajukan cuti/izin.');
+    } on DioException catch (e) {
+      final message = e.response?.data is Map
+          ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
+          : 'Tidak dapat terhubung ke server';
+      throw Exception(message);
+    }
+  }
+
+  /// Ambil histori permohonan cuti/izin dengan paginasi offset/limit.
+  /// Endpoint: GET reference/permohonan/cuti
+  /// Query: limit (default 10), offset (default 0), status (opsional:
+  /// draft/pending/approved/rejected/cancelled), periode (format "M - YYYY",
+  /// opsional).
+  Future<LeaveRequestHistoryPage> getHistory({
+    String? status,
+    String? periode,
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        'reference/permohonan/cuti',
+        queryParameters: {
+          'limit': limit,
+          'offset': offset,
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (periode != null && periode.isNotEmpty) 'periode': periode,
+        },
+      );
+
+      final body = response.data;
+      if (body is Map) {
+        final totalRaw = body['total'];
+        final total = totalRaw is int
+            ? totalRaw
+            : int.tryParse(totalRaw?.toString() ?? '') ?? 0;
+
+        final rows = (body['rows'] as List<dynamic>? ?? [])
+            .map((e) => LeaveRequestModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        return LeaveRequestHistoryPage(total: total, rows: rows);
+      }
+
+      throw Exception('Response histori permohonan tidak valid');
     } on DioException catch (e) {
       final message = e.response?.data is Map
           ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')

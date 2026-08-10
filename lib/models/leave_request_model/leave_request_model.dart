@@ -1,6 +1,8 @@
 import 'package:absenpro/models/employee/employee_model.dart';
 import 'package:absenpro/models/leave_type/leave_type_model.dart';
 import 'package:absenpro/models/leave_attachment/leave_attachment_model.dart';
+import 'package:absenpro/models/leave_approval/leave_approval_model.dart';
+import 'package:absenpro/models/leave_log/leave_log_model.dart';
 
 /// Model respon Leave Request (`data` di respon backend).
 /// Dipakai setelah submit sukses — buat konfirmasi / riwayat.
@@ -22,6 +24,8 @@ class LeaveRequestModel {
   final EmployeeModel? employee;
   final LeaveTypeModel? leaveType;
   final List<LeaveAttachmentModel> attachments;
+  final List<LeaveApprovalModel> approvals;
+  final List<LeaveLogModel> logs;
 
   LeaveRequestModel({
     required this.id,
@@ -41,6 +45,8 @@ class LeaveRequestModel {
     this.employee,
     this.leaveType,
     this.attachments = const [],
+    this.approvals = const [],
+    this.logs = const [],
   });
 
   factory LeaveRequestModel.fromJson(Map<String, dynamic> json) {
@@ -69,6 +75,18 @@ class LeaveRequestModel {
           ? (json['attachments'] as List)
               .whereType<Map<String, dynamic>>()
               .map((e) => LeaveAttachmentModel.fromJson(e))
+              .toList()
+          : const [],
+      approvals: json['approvals'] is List
+          ? (json['approvals'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => LeaveApprovalModel.fromJson(e))
+              .toList()
+          : const [],
+      logs: json['logs'] is List
+          ? (json['logs'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => LeaveLogModel.fromJson(e))
               .toList()
           : const [],
     );
