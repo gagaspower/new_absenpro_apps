@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -5,9 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:absenpro/providers/leave_type/leave_type_provider.dart';
 import 'package:absenpro/models/leave_type/leave_type_model.dart';
+import 'package:absenpro/providers/leave_request/leave_request_provider.dart';
+import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
+import 'package:absenpro/widgets/custom_alert_dialog.dart';
 
 const Color _lightGray = Color(0xFFE0E0E0);
 const Color _primaryTeal = Color(0xFF2FC7CF);
+const Color _draftPink = Color(0xFFFF9B9B);
 
 class FormCutiPage extends StatefulWidget {
   const FormCutiPage({super.key});
@@ -33,6 +38,10 @@ class _FormCutiPageState extends State<FormCutiPage> {
 
   LeaveTypeModel? _selectedLeaveType;
   final formkey = GlobalKey<FormState>();
+
+  // Satu flag global buat kedua tombol (Draft & Ajukan), dipasangkan
+  // dengan overlay dialog di _showLoadingOverlay/_hideLoadingOverlay.
+  bool _isSubmitting = false;
 
   bool get _isHourUnit => _selectedLeaveType?.unit == 'hour';
 
@@ -224,12 +233,50 @@ class _FormCutiPageState extends State<FormCutiPage> {
     });
   }
 
-  void _submitForm() {
+  /// dd/MM/yyyy (dipakai controller/date picker) -> yyyy-MM-dd (format backend).
+  String _toApiDate(String ddMmYyyy) {
+    final parts = ddMmYyyy.split('/');
+    if (parts.length != 3) return ddMmYyyy;
+    final day = parts[0].padLeft(2, '0');
+    final month = parts[1].padLeft(2, '0');
+    final year = parts[2];
+    return '$year-$month-$day';
+  }
+
+  num _parseTotal(String text) {
+    final value = num.tryParse(text) ?? 0;
+    return value;
+  }
+
+  // Overlay loading tunggal buat submit (Draft maupun Ajukan), dipakai
+  // di _submitForm supaya kedua tombol punya indikator loading yang sama
+  // tanpa gantung ke isBusy per-tombol.
+  Future<void> _showLoadingOverlay() {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black45,
+      useRootNavigator: true,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+  }
+
+  void _hideLoadingOverlay() {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop();
+  }
+
+  // asDraft=false -> status Pending (Ajukan). asDraft=true -> status Draft.
+  Future<void> _submitForm({bool asDraft = false}) async {
     final isFormValid = formkey.currentState?.validate() == true;
 
     // Jika jenis cuti/izin membutuhkan dokumen, file wajib dipilih.
-    final attachmentValid =
-        _selectedLeaveType?.requireAttachment != 1 || _selectedDocument != null;
+    // Draft tidak wajib lampiran — hanya dicek saat Ajukan (Pending).
+    final attachmentValid = asDraft ||
+        _selectedLeaveType?.requireAttachment != 1 ||
+        _selectedDocument != null;
 
     setState(() {
       _documentError = attachmentValid
@@ -237,11 +284,71 @@ class _FormCutiPageState extends State<FormCutiPage> {
           : 'Dokumen pendukung wajib diupload untuk jenis cuti/izin ini.';
     });
 
-    if (!isFormValid || !attachmentValid) {
+    // Draft hanya butuh jenis cuti/izin terisi, tidak perlu lolos validasi penuh.
+    if (asDraft) {
+      if (_selectedLeaveType == null) return;
+    } else if (!isFormValid || !attachmentValid || _selectedLeaveType == null) {
       return;
     }
 
-    // TODO: proses submit data cuti/izin
+    final payload = LeaveRequestPayload(
+      leaveTypeId: _selectedLeaveType!.id,
+      startDate: _toApiDate(_startDateController.text),
+      endDate: _toApiDate(_endDateController.text),
+      startTime: _isHourUnit && _startTimeController.text.isNotEmpty
+          ? _startTimeController.text
+          : null,
+      endTime: _isHourUnit && _endTimeController.text.isNotEmpty
+          ? _endTimeController.text
+          : null,
+      totalDays: _parseTotal(_totalController.text),
+      reason: _reasonController.text,
+      addressDuringLeave: _addressController.text,
+      phoneDuringLeave: _phoneController.text,
+      // NOTE: status perlu ditambahkan di LeaveRequestPayload/model &
+      // provider.submitLeaveRequest agar backend terima 'draft' vs 'pending'.
+      status: asDraft ? 'draft' : 'pending',
+    );
+
+    final provLeaveRequest =
+        Provider.of<LeaveRequestProvider>(context, listen: false);
+
+    setState(() => _isSubmitting = true);
+    unawaited(_showLoadingOverlay());
+
+    final success = await provLeaveRequest.submitLeaveRequest(
+      payload,
+      attachment: _selectedDocument,
+    );
+
+    if (!mounted) return;
+
+    _hideLoadingOverlay();
+    setState(() => _isSubmitting = false);
+
+    if (success) {
+      final result = provLeaveRequest.lastSubmittedRequest;
+      final verb = asDraft ? 'disimpan sebagai draft' : 'berhasil dikirim';
+      await showCustomAlert(
+        context: context,
+        title: 'Berhasil',
+        message: result != null
+            ? 'Pengajuan ${result.requestNumber} $verb.'
+            : 'Pengajuan cuti/izin $verb.',
+        assetPath: 'assets/images/alert/check-mark.png',
+        accentColor: const Color(0xFF4CAF7D),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } else {
+      await showCustomAlert(
+        context: context,
+        title: 'Gagal',
+        message: provLeaveRequest.errorMessage ?? 'Gagal mengirim pengajuan.',
+        assetPath: 'assets/images/alert/warning.png',
+        accentColor: const Color(0xFFE0637A),
+      );
+    }
   }
 
   @override
@@ -259,19 +366,43 @@ class _FormCutiPageState extends State<FormCutiPage> {
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          onPressed: _submitForm,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primaryTeal,
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : () => _submitForm(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryTeal,
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: const Text(
+                  'Ajukan',
+                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+              ),
             ),
-          ),
-          child: const Text(
-            'Kirim',
-            style: TextStyle(fontSize: 16.0, color: Colors.white),
-          ),
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: ElevatedButton(
+                onPressed:
+                    _isSubmitting ? null : () => _submitForm(asDraft: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _draftPink,
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: const Text(
+                  'Draft',
+                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       body: SafeArea(
