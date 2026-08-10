@@ -1,10 +1,22 @@
 import 'package:absenpro/models/periode/periode_model.dart';
+import 'package:absenpro/providers/periode/periode_provider.dart';
 import 'package:absenpro/providers/leave_request/leave_request_history_provider.dart';
 import 'package:absenpro/widgets/empty_state_widget.dart';
-import 'package:absenpro/widgets/periode_filter_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'histori_models.dart';
+
+const Color _kPrimaryColor = Color(0xFF2FC7CF);
+
+/// Opsi status filter histori. `value == null` -> "Semua" (default).
+const Map<String?, String> _kStatusOptions = {
+  null: 'Semua',
+  'draft': 'Draft',
+  'pending': 'Menunggu Persetujuan',
+  'approved': 'Disetujui',
+  'rejected': 'Ditolak',
+  'cancelled': 'Dibatalkan',
+};
 
 class HistoriCutiTab extends StatefulWidget {
   const HistoriCutiTab({super.key});
@@ -16,6 +28,7 @@ class HistoriCutiTab extends StatefulWidget {
 class _HistoriCutiTabState extends State<HistoriCutiTab> {
   final ScrollController _scrollController = ScrollController();
   String? _activePeriode;
+  String? _activeStatus; // null = Semua
 
   @override
   void initState() {
@@ -24,10 +37,29 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchInitial());
   }
 
-  void _fetchInitial({PeriodeModel? periode}) {
+  /// Cari periode yang cocok bulan-tahun sekarang dari [periodeList].
+  /// Format value dari server: "M - yyyy" (bulan tanpa leading zero,
+  /// contoh "1 - 2026" = Januari 2026).
+  /// Fallback item pertama list (list biasa terurut periode terbaru duluan).
+  PeriodeModel? _findCurrentPeriode(List<PeriodeModel> periodeList) {
+    if (periodeList.isEmpty) return null;
+    final now = DateTime.now();
+    final target = '${now.month} - ${now.year}';
+
+    for (final p in periodeList) {
+      if (p.periodeValue == target) return p;
+    }
+    return periodeList.first;
+  }
+
+  void _fetchInitial({PeriodeModel? periode, String? status}) {
     _activePeriode = periode?.periodeValue ?? _activePeriode;
+    if (status != _activeStatus || periode != null) {
+      _activeStatus = status ?? _activeStatus;
+    }
     context.read<LeaveRequestHistoryProvider>().fetchInitial(
           periode: _activePeriode,
+          status: _activeStatus,
           leaveTypeCategory: 'cuti',
         );
   }
@@ -37,6 +69,212 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
         _scrollController.position.maxScrollExtent - 200) {
       context.read<LeaveRequestHistoryProvider>().loadMore();
     }
+  }
+
+  void _openFilterBottomSheet() {
+    final periodeProvider = context.read<PeriodeProvider>();
+    final currentPeriode = periodeProvider.selectedPeriode;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        PeriodeModel? tempPeriode = currentPeriode;
+        for (final p in periodeProvider.periodeList) {
+          if (p.periodeValue == _activePeriode) {
+            tempPeriode = p;
+            break;
+          }
+        }
+        String? tempStatus = _activeStatus;
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Filter Histori',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Periode',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: periodeProvider.periodeList.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final periode = periodeProvider.periodeList[index];
+                          final isSelected =
+                              periode.periodeValue == tempPeriode?.periodeValue;
+                          return _FilterChip(
+                            label: periode.periodeLabel,
+                            isSelected: isSelected,
+                            onTap: () => setSheetState(() {
+                              tempPeriode = periode;
+                            }),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Status',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _kStatusOptions.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final entry =
+                              _kStatusOptions.entries.elementAt(index);
+                          final isSelected = entry.key == tempStatus;
+                          return _FilterChip(
+                            label: entry.value,
+                            isSelected: isSelected,
+                            onTap: () => setSheetState(() {
+                              tempStatus = entry.key;
+                            }),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                final resetPeriode = _findCurrentPeriode(
+                                    periodeProvider.periodeList);
+                                setSheetState(() {
+                                  tempPeriode = resetPeriode;
+                                  tempStatus = null;
+                                });
+                                if (resetPeriode != null) {
+                                  periodeProvider.selectPeriode(resetPeriode);
+                                }
+                                Navigator.pop(sheetContext);
+                                _fetchInitial(
+                                  periode: resetPeriode,
+                                  status: null,
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF6C757D),
+                                side: const BorderSide(
+                                  color: Color(0xFF6C757D),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text(
+                                'Reset',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (tempPeriode != null) {
+                                  periodeProvider.selectPeriode(tempPeriode!);
+                                }
+                                Navigator.pop(sheetContext);
+                                _fetchInitial(
+                                  periode: tempPeriode,
+                                  status: tempStatus,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _kPrimaryColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text(
+                                'Terapkan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -51,9 +289,71 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PeriodeFilterWidget(
-          onPeriodeSelected: (p) => _fetchInitial(periode: p),
-          onRefreshTap: (p) => _fetchInitial(periode: p),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              InkWell(
+                onTap: _openFilterBottomSheet,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Filter',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(Icons.tune, color: Colors.black54, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  final activePeriode =
+                      context.read<PeriodeProvider>().selectedPeriode;
+                  if (activePeriode != null) {
+                    _fetchInitial(periode: activePeriode);
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _kPrimaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.refresh,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -96,6 +396,49 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Chip filter (periode/status) untuk bottomsheet.
+/// Default: border secondary bootstrap. Selected: alert success bootstrap.
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(5),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFD4EDDA) : Colors.white,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFFC3E6CB) : const Color(0xFFD6D8DB),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color:
+                isSelected ? const Color(0xFF155724) : const Color(0xFF6C757D),
+          ),
+        ),
+      ),
     );
   }
 }
