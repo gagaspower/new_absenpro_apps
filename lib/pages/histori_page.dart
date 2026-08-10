@@ -20,25 +20,6 @@ class _HistoriPageState extends State<HistoriPage>
 
   static const Color primaryTeal = Color(0xFF2FC7CF);
 
-  // TODO: ganti dengan data asli dari API Laravel
-  final List<HistoriItem> _dataCuti = const [
-    HistoriItem(
-      title: 'Cuti Tahunan',
-      status: HistoriStatus.menunggu,
-      tanggal: '2 Januari 2026 - 3 Januari 2026',
-    ),
-    HistoriItem(
-      title: 'Cuti Tahunan',
-      status: HistoriStatus.disetujui,
-      tanggal: '2 Januari 2026 - 3 Januari 2026',
-    ),
-    HistoriItem(
-      title: 'Cuti Tahunan',
-      status: HistoriStatus.ditolak,
-      tanggal: '2 Januari 2026 - 3 Januari 2026',
-    ),
-  ];
-
   final List<HistoriItem> _dataIzin = const [];
 
   @override
@@ -125,7 +106,7 @@ class _HistoriPageState extends State<HistoriPage>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  HistoriCutiTab(items: _dataCuti),
+                  HistoriCutiTab(),
                   HistoriIzinTab(items: _dataIzin),
                   const HistoriAbsenTab(),
                 ],

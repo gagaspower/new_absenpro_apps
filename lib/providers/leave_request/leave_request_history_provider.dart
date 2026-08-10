@@ -7,20 +7,24 @@ class LeaveRequestHistoryProvider extends ChangeNotifier {
   static const int _limit = 10;
 
   List<LeaveRequestModel> items = [];
-  bool isLoading = false; // loading awal (ganti filter / pertama buka)
-  bool isLoadingMore = false; // loading tambahan (infinite scroll)
+  bool isLoading = false;
+  bool isLoadingMore = false;
   bool hasMore = true;
   String? errorMessage;
   String? _currentStatus;
   String? _currentPeriode;
+  String? _currentLeaveTypeCategory;
   int _requestVersion = 0;
 
-  /// Muat ulang dari awal (offset 0), dipanggil saat pertama buka tab
-  /// Riwayat Cuti/Izin atau saat user ganti filter status/periode.
-  Future<void> fetchInitial({String? status, String? periode}) async {
+  Future<void> fetchInitial({
+    String? status,
+    String? periode,
+    String? leaveTypeCategory,
+  }) async {
     final requestVersion = ++_requestVersion;
     _currentStatus = status;
     _currentPeriode = periode;
+    _currentLeaveTypeCategory = leaveTypeCategory;
     final previousItems = List<LeaveRequestModel>.from(items);
 
     isLoading = true;
@@ -33,6 +37,7 @@ class LeaveRequestHistoryProvider extends ChangeNotifier {
       final page = await _service.getHistory(
         status: status,
         periode: periode,
+        leaveTypeCategory: leaveTypeCategory,
         limit: _limit,
         offset: 0,
       );
@@ -54,8 +59,6 @@ class LeaveRequestHistoryProvider extends ChangeNotifier {
     }
   }
 
-  /// Muat halaman berikutnya (offset = jumlah item yang sudah ada),
-  /// dipanggil saat user scroll mendekati bawah list.
   Future<void> loadMore() async {
     if (isLoadingMore || isLoading || !hasMore) return;
 
@@ -66,14 +69,14 @@ class LeaveRequestHistoryProvider extends ChangeNotifier {
       final page = await _service.getHistory(
         status: _currentStatus,
         periode: _currentPeriode,
+        leaveTypeCategory: _currentLeaveTypeCategory,
         limit: _limit,
         offset: items.length,
       );
       items = [...items, ...page.rows];
       hasMore = items.length < page.total;
     } catch (_) {
-      // Gagal load more (mis. koneksi putus sesaat) — hasMore tetap true
-      // supaya user bisa scroll lagi untuk retry, tanpa perlu reset state.
+      // gagal load more, hasMore tetap true biar bisa retry scroll
     } finally {
       isLoadingMore = false;
       notifyListeners();
@@ -88,6 +91,7 @@ class LeaveRequestHistoryProvider extends ChangeNotifier {
     items = [];
     _currentStatus = null;
     _currentPeriode = null;
+    _currentLeaveTypeCategory = null;
     notifyListeners();
   }
 }

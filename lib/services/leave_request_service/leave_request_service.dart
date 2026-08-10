@@ -56,14 +56,10 @@ class LeaveRequestService {
     }
   }
 
-  /// Ambil histori permohonan cuti/izin dengan paginasi offset/limit.
-  /// Endpoint: GET reference/permohonan/cuti
-  /// Query: limit (default 10), offset (default 0), status (opsional:
-  /// draft/pending/approved/rejected/cancelled), periode (format "M - YYYY",
-  /// opsional).
   Future<LeaveRequestHistoryPage> getHistory({
     String? status,
     String? periode,
+    String? leaveTypeCategory,
     int limit = 10,
     int offset = 0,
   }) async {
@@ -75,6 +71,8 @@ class LeaveRequestService {
           'offset': offset,
           if (status != null && status.isNotEmpty) 'status': status,
           if (periode != null && periode.isNotEmpty) 'periode': periode,
+          if (leaveTypeCategory != null && leaveTypeCategory.isNotEmpty)
+            'leaveTypeCategory': leaveTypeCategory,
         },
       );
 
