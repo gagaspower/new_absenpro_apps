@@ -4,27 +4,31 @@ import 'package:absenpro/services/api_service.dart';
 import 'package:dio/dio.dart';
 import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 
-/// Wrapper hasil paginasi histori permohonan cuti/izin: total data & isi
-/// baris untuk halaman (offset/limit) yang diminta.
 class LeaveRequestHistoryPage {
   final int total;
   final List<LeaveRequestModel> rows;
 
-  LeaveRequestHistoryPage({required this.total, required this.rows});
+  LeaveRequestHistoryPage({
+    required this.total,
+    required this.rows,
+  });
 }
 
 class LeaveRequestService {
   final ApiService _apiService = ApiService();
 
-  /// Kirim pengajuan cuti/izin. `attachment` opsional, dikirim multipart
-  /// kalau user pilih dokumen.
+  /// Kirim pengajuan cuti/izin.
+  /// `attachment` opsional dan dikirim sebagai multipart.
   Future<LeaveRequestModel> submitLeaveRequest(
     LeaveRequestPayload payload, {
     File? attachment,
   }) async {
     try {
       final Map<String, dynamic> fields = payload.toJson().map(
-            (key, value) => MapEntry(key, value?.toString() ?? ''),
+            (key, value) => MapEntry(
+              key,
+              value?.toString() ?? '',
+            ),
           );
 
       if (attachment != null) {
@@ -42,16 +46,23 @@ class LeaveRequestService {
       );
 
       final raw = response.data;
+
       if (raw is Map && raw['success'] == true && raw['data'] is Map) {
-        return LeaveRequestModel.fromJson(raw['data'] as Map<String, dynamic>);
+        return LeaveRequestModel.fromJson(
+          raw['data'] as Map<String, dynamic>,
+        );
       }
 
       final message = raw is Map ? raw['message'] : null;
-      throw Exception(message ?? 'Gagal mengajukan cuti/izin.');
+
+      throw Exception(
+        message ?? 'Gagal mengajukan cuti/izin.',
+      );
     } on DioException catch (e) {
       final message = e.response?.data is Map
           ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
           : 'Tidak dapat terhubung ke server';
+
       throw Exception(message);
     }
   }
@@ -77,24 +88,39 @@ class LeaveRequestService {
       );
 
       final body = response.data;
+
       if (body is Map) {
         final totalRaw = body['total'];
+
         final total = totalRaw is int
             ? totalRaw
-            : int.tryParse(totalRaw?.toString() ?? '') ?? 0;
+            : int.tryParse(
+                  totalRaw?.toString() ?? '',
+                ) ??
+                0;
 
         final rows = (body['rows'] as List<dynamic>? ?? [])
-            .map((e) => LeaveRequestModel.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) => LeaveRequestModel.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
             .toList();
 
-        return LeaveRequestHistoryPage(total: total, rows: rows);
+        return LeaveRequestHistoryPage(
+          total: total,
+          rows: rows,
+        );
       }
 
-      throw Exception('Response histori permohonan tidak valid');
+      throw Exception(
+        'Response histori permohonan tidak valid',
+      );
     } on DioException catch (e) {
       final message = e.response?.data is Map
           ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
           : 'Tidak dapat terhubung ke server';
+
       throw Exception(message);
     }
   }

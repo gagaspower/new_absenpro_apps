@@ -26,8 +26,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
   final TextEditingController _leaveTypeController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _startTimeController = TextEditingController();
-  final TextEditingController _endTimeController = TextEditingController();
   final TextEditingController _totalController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -39,11 +37,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
   LeaveTypeModel? _selectedLeaveType;
   final formkey = GlobalKey<FormState>();
 
-  // Satu flag global buat kedua tombol (Draft & Ajukan), dipasangkan
-  // dengan overlay dialog di _showLoadingOverlay/_hideLoadingOverlay.
   bool _isSubmitting = false;
-
-  bool get _isHourUnit => _selectedLeaveType?.unit == 'hour';
 
   @override
   void initState() {
@@ -52,112 +46,73 @@ class _FormCutiPageState extends State<FormCutiPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provLeaveType =
           Provider.of<LeaveTypeProvider>(context, listen: false);
-      // force: true so newly-created jenis cuti on the backend always show up.
-      // Without this, the provider caches leaveTypeList and skips refetching
-      // whenever it's already non-empty — which is why it stayed stuck at 1 item.
+
       provLeaveType.fetchLeaveTypes(force: true);
     });
 
-    // These fire on ANY controller text change — typed or programmatic
-    // (e.g. from a date/time picker) — so the total updates immediately.
     _startDateController.addListener(_recalculateTotal);
     _endDateController.addListener(_recalculateTotal);
-    _startTimeController.addListener(_recalculateTotal);
-    _endTimeController.addListener(_recalculateTotal);
   }
 
   @override
   void dispose() {
     _startDateController.removeListener(_recalculateTotal);
     _endDateController.removeListener(_recalculateTotal);
-    _startTimeController.removeListener(_recalculateTotal);
-    _endTimeController.removeListener(_recalculateTotal);
 
     _reasonController.dispose();
     _leaveTypeController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
-    _startTimeController.dispose();
-    _endTimeController.dispose();
     _totalController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+
     super.dispose();
   }
 
   void _recalculateTotal() {
-    // Setting a controller's .text updates that TextField immediately —
-    // no setState needed here, it's not driving any other widget's layout.
-    if (_isHourUnit) {
-      if (_startTimeController.text.isEmpty ||
-          _endTimeController.text.isEmpty) {
-        _totalController.text = '';
-        return;
-      }
+    if (_startDateController.text.isEmpty || _endDateController.text.isEmpty) {
+      _totalController.text = '';
+      return;
+    }
 
-      final startParts = _startTimeController.text.split(':');
-      final endParts = _endTimeController.text.split(':');
+    final startParts = _startDateController.text.split('/');
+    final endParts = _endDateController.text.split('/');
 
-      if (startParts.length != 2 || endParts.length != 2) {
-        _totalController.text = '';
-        return;
-      }
+    if (startParts.length != 3 || endParts.length != 3) {
+      _totalController.text = '';
+      return;
+    }
 
-      final startMinutes =
-          int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
-      final endMinutes = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
-      final diffMinutes = endMinutes - startMinutes;
+    final startDate = DateTime(
+      int.parse(startParts[2]),
+      int.parse(startParts[1]),
+      int.parse(startParts[0]),
+    );
 
-      if (diffMinutes <= 0) {
-        _totalController.text = '';
-        return;
-      }
+    final endDate = DateTime(
+      int.parse(endParts[2]),
+      int.parse(endParts[1]),
+      int.parse(endParts[0]),
+    );
 
-      final totalHours = diffMinutes / 60;
-      _totalController.text = totalHours % 1 == 0
-          ? totalHours.toStringAsFixed(0)
-          : totalHours.toStringAsFixed(2);
-    } else {
-      if (_startDateController.text.isEmpty ||
-          _endDateController.text.isEmpty) {
-        _totalController.text = '';
-        return;
-      }
+    if (endDate.isBefore(startDate)) {
+      _totalController.text = '';
+      return;
+    }
 
-      final startParts = _startDateController.text.split('/');
-      final endParts = _endDateController.text.split('/');
+    int totalDays = 0;
 
-      if (startParts.length != 3 || endParts.length != 3) {
-        _totalController.text = '';
-        return;
-      }
-
-      final startDate = DateTime(
-        int.parse(startParts[2]),
-        int.parse(startParts[1]),
-        int.parse(startParts[0]),
-      );
-      final endDate = DateTime(
-        int.parse(endParts[2]),
-        int.parse(endParts[1]),
-        int.parse(endParts[0]),
-      );
-
-      if (!endDate.isBefore(startDate)) {
-        // Hitung hari kerja (Senin-Sabtu), lewati hari Minggu.
-        int totalDays = 0;
-        for (DateTime day = startDate;
-            !day.isAfter(endDate);
-            day = day.add(const Duration(days: 1))) {
-          if (day.weekday != DateTime.sunday) {
-            totalDays++;
-          }
-        }
-        _totalController.text = totalDays > 0 ? totalDays.toString() : '';
-      } else {
-        _totalController.text = '';
+    for (DateTime day = startDate;
+        !day.isAfter(endDate);
+        day = day.add(const Duration(days: 1))) {
+      // Hari Minggu tidak dihitung.
+      if (day.weekday != DateTime.sunday) {
+        totalDays++;
       }
     }
+
+    _totalController.text = totalDays > 0 ? totalDays.toString() : '';
   }
 
   void _onLeaveTypeSelected(LeaveTypeModel leaveType) {
@@ -165,18 +120,9 @@ class _FormCutiPageState extends State<FormCutiPage> {
       _selectedLeaveType = leaveType;
       _leaveTypeController.text = leaveType.name;
       _documentError = null;
-
-      if (_isHourUnit) {
-        if (_startDateController.text.isNotEmpty) {
-          _endDateController.text = _startDateController.text;
-        }
-      } else {
-        _startTimeController.text = '';
-        _endTimeController.text = '';
-      }
-
-      _recalculateTotal();
     });
+
+    _recalculateTotal();
   }
 
   Future<void> _pickDate(TextEditingController controller) async {
@@ -189,24 +135,9 @@ class _FormCutiPageState extends State<FormCutiPage> {
 
     if (pickedDate == null) return;
 
-    controller.text =
-        "${pickedDate.day.toString().padLeft(2, '0')}/${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.year}";
-
-    if (controller == _startDateController && _isHourUnit) {
-      _endDateController.text = _startDateController.text;
-    }
-  }
-
-  Future<void> _pickTime(TextEditingController controller) async {
-    final TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-
-    if (pickedTime == null) return;
-
-    controller.text =
-        "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+    controller.text = '${pickedDate.day.toString().padLeft(2, '0')}/'
+        '${pickedDate.month.toString().padLeft(2, '0')}/'
+        '${pickedDate.year}';
   }
 
   Future<void> _pickDocument() async {
@@ -219,9 +150,11 @@ class _FormCutiPageState extends State<FormCutiPage> {
     if (result == null || result.files.single.path == null) return;
 
     final pickedFile = result.files.single;
+
     setState(() {
       _selectedDocument = File(pickedFile.path!);
       _selectedDocumentName = pickedFile.name;
+      _documentError = null;
     });
   }
 
@@ -233,24 +166,24 @@ class _FormCutiPageState extends State<FormCutiPage> {
     });
   }
 
-  /// dd/MM/yyyy (dipakai controller/date picker) -> yyyy-MM-dd (format backend).
   String _toApiDate(String ddMmYyyy) {
     final parts = ddMmYyyy.split('/');
-    if (parts.length != 3) return ddMmYyyy;
+
+    if (parts.length != 3) {
+      return ddMmYyyy;
+    }
+
     final day = parts[0].padLeft(2, '0');
     final month = parts[1].padLeft(2, '0');
     final year = parts[2];
+
     return '$year-$month-$day';
   }
 
   num _parseTotal(String text) {
-    final value = num.tryParse(text) ?? 0;
-    return value;
+    return num.tryParse(text) ?? 0;
   }
 
-  // Overlay loading tunggal buat submit (Draft maupun Ajukan), dipakai
-  // di _submitForm supaya kedua tombol punya indikator loading yang sama
-  // tanpa gantung ke isBusy per-tombol.
   Future<void> _showLoadingOverlay() {
     return showDialog(
       context: context,
@@ -258,22 +191,29 @@ class _FormCutiPageState extends State<FormCutiPage> {
       barrierColor: Colors.black45,
       useRootNavigator: true,
       builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(
+          color: Colors.white,
+        ),
       ),
     );
   }
 
   void _hideLoadingOverlay() {
-    final navigator = Navigator.of(context, rootNavigator: true);
-    if (navigator.canPop()) navigator.pop();
+    final navigator = Navigator.of(
+      context,
+      rootNavigator: true,
+    );
+
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
-  // asDraft=false -> status Pending (Ajukan). asDraft=true -> status Draft.
-  Future<void> _submitForm({bool asDraft = false}) async {
+  Future<void> _submitForm({
+    bool asDraft = false,
+  }) async {
     final isFormValid = formkey.currentState?.validate() == true;
 
-    // Jika jenis cuti/izin membutuhkan dokumen, file wajib dipilih.
-    // Draft tidak wajib lampiran — hanya dicek saat Ajukan (Pending).
     final attachmentValid = asDraft ||
         _selectedLeaveType?.requireAttachment != 1 ||
         _selectedDocument != null;
@@ -284,36 +224,40 @@ class _FormCutiPageState extends State<FormCutiPage> {
           : 'Dokumen pendukung wajib diupload untuk jenis cuti/izin ini.';
     });
 
-    // Draft hanya butuh jenis cuti/izin terisi, tidak perlu lolos validasi penuh.
     if (asDraft) {
-      if (_selectedLeaveType == null) return;
+      if (_selectedLeaveType == null) {
+        return;
+      }
     } else if (!isFormValid || !attachmentValid || _selectedLeaveType == null) {
       return;
     }
 
     final payload = LeaveRequestPayload(
       leaveTypeId: _selectedLeaveType!.id,
-      startDate: _toApiDate(_startDateController.text),
-      endDate: _toApiDate(_endDateController.text),
-      startTime: _isHourUnit && _startTimeController.text.isNotEmpty
-          ? _startTimeController.text
-          : null,
-      endTime: _isHourUnit && _endTimeController.text.isNotEmpty
-          ? _endTimeController.text
-          : null,
-      totalDays: _parseTotal(_totalController.text),
+      startDate: _toApiDate(
+        _startDateController.text,
+      ),
+      endDate: _toApiDate(
+        _endDateController.text,
+      ),
+      totalDays: _parseTotal(
+        _totalController.text,
+      ),
       reason: _reasonController.text,
       addressDuringLeave: _addressController.text,
       phoneDuringLeave: _phoneController.text,
-      // NOTE: status perlu ditambahkan di LeaveRequestPayload/model &
-      // provider.submitLeaveRequest agar backend terima 'draft' vs 'pending'.
       status: asDraft ? 'draft' : 'pending',
     );
 
-    final provLeaveRequest =
-        Provider.of<LeaveRequestProvider>(context, listen: false);
+    final provLeaveRequest = Provider.of<LeaveRequestProvider>(
+      context,
+      listen: false,
+    );
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+    });
+
     unawaited(_showLoadingOverlay());
 
     final success = await provLeaveRequest.submitLeaveRequest(
@@ -321,14 +265,21 @@ class _FormCutiPageState extends State<FormCutiPage> {
       attachment: _selectedDocument,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     _hideLoadingOverlay();
-    setState(() => _isSubmitting = false);
+
+    setState(() {
+      _isSubmitting = false;
+    });
 
     if (success) {
       final result = provLeaveRequest.lastSubmittedRequest;
+
       final verb = asDraft ? 'disimpan sebagai draft' : 'berhasil dikirim';
+
       await showCustomAlert(
         context: context,
         title: 'Berhasil',
@@ -338,7 +289,11 @@ class _FormCutiPageState extends State<FormCutiPage> {
         assetPath: 'assets/images/alert/check-mark.png',
         accentColor: const Color(0xFF4CAF7D),
       );
-      if (!mounted) return;
+
+      if (!mounted) {
+        return;
+      }
+
       Navigator.pop(context, true);
     } else {
       await showCustomAlert(
@@ -373,32 +328,45 @@ class _FormCutiPageState extends State<FormCutiPage> {
                 onPressed: _isSubmitting ? null : () => _submitForm(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primaryTeal,
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16.0,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
                 child: const Text(
                   'Ajukan',
-                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12.0),
             Expanded(
               child: ElevatedButton(
-                onPressed:
-                    _isSubmitting ? null : () => _submitForm(asDraft: true),
+                onPressed: _isSubmitting
+                    ? null
+                    : () => _submitForm(
+                          asDraft: true,
+                        ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _draftPink,
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16.0,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
                 child: const Text(
                   'Draft',
-                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -418,8 +386,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 
   Widget _buildForm() {
-    final bool isHourUnit = _isHourUnit;
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +427,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
             label: 'Tanggal Selesai',
             controller: _endDateController,
             readOnly: true,
-            enabled: !isHourUnit,
             onTap: () => _pickDate(_endDateController),
             validator: (value) => (value == null || value.isEmpty)
                 ? 'Harap pilih tanggal selesai'
@@ -469,33 +434,7 @@ class _FormCutiPageState extends State<FormCutiPage> {
           ),
           const SizedBox(height: 16.0),
           _BorderedFormField(
-            label: 'Jam Mulai',
-            controller: _startTimeController,
-            readOnly: true,
-            enabled: isHourUnit,
-            onTap: () => _pickTime(_startTimeController),
-            validator: isHourUnit
-                ? (value) => (value == null || value.isEmpty)
-                    ? 'Harap pilih jam mulai'
-                    : null
-                : null,
-          ),
-          const SizedBox(height: 16.0),
-          _BorderedFormField(
-            label: 'Jam Selesai',
-            controller: _endTimeController,
-            readOnly: true,
-            enabled: isHourUnit,
-            onTap: () => _pickTime(_endTimeController),
-            validator: isHourUnit
-                ? (value) => (value == null || value.isEmpty)
-                    ? 'Harap pilih jam selesai'
-                    : null
-                : null,
-          ),
-          const SizedBox(height: 16.0),
-          _BorderedFormField(
-            label: isHourUnit ? 'Total Jam' : 'Total Hari',
+            label: 'Total Hari',
             controller: _totalController,
             keyboardType: TextInputType.number,
             readOnly: true,
@@ -538,7 +477,9 @@ class _FormCutiPageState extends State<FormCutiPage> {
             if (isRequired)
               const Text(
                 ' *',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(
+                  color: Colors.red,
+                ),
               ),
           ],
         ),
@@ -562,12 +503,17 @@ class _FormCutiPageState extends State<FormCutiPage> {
             child: _selectedDocumentName == null
                 ? const Row(
                     children: [
-                      Icon(Icons.upload_file, color: _primaryTeal),
+                      Icon(
+                        Icons.upload_file,
+                        color: _primaryTeal,
+                      ),
                       SizedBox(width: 8.0),
                       Expanded(
                         child: Text(
                           'Pilih dokumen (PDF, PNG, JPG, JPEG)',
-                          style: TextStyle(color: Colors.black54),
+                          style: TextStyle(
+                            color: Colors.black54,
+                          ),
                         ),
                       ),
                     ],
@@ -590,7 +536,10 @@ class _FormCutiPageState extends State<FormCutiPage> {
                       ),
                       IconButton(
                         tooltip: 'Hapus dokumen',
-                        icon: const Icon(Icons.close, color: Colors.red),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.red,
+                        ),
                         onPressed: _removeDocument,
                       ),
                     ],
@@ -601,20 +550,31 @@ class _FormCutiPageState extends State<FormCutiPage> {
         if (_documentError != null)
           Text(
             _documentError!,
-            style: const TextStyle(color: Colors.red, fontSize: 12.0),
+            style: const TextStyle(
+              color: Colors.red,
+              fontSize: 12.0,
+            ),
           )
         else
           const Text(
             'Format yang diperbolehkan: PDF, PNG, JPG, JPEG',
-            style: TextStyle(color: Colors.black54, fontSize: 12.0),
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 12.0,
+            ),
           ),
       ],
     );
   }
 
-  Widget _showModalBottomSheet(BuildContext context) {
+  Widget _showModalBottomSheet(
+    BuildContext context,
+  ) {
     return Container(
-      padding: const EdgeInsets.only(top: 12.0, bottom: 16.0),
+      padding: const EdgeInsets.only(
+        top: 12.0,
+        bottom: 16.0,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -630,13 +590,18 @@ class _FormCutiPageState extends State<FormCutiPage> {
           ),
           const SizedBox(height: 16.0),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Pilih Jenis Cuti/Izin',
-                  style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -650,17 +615,24 @@ class _FormCutiPageState extends State<FormCutiPage> {
             builder: (context, provLeaveType, _) {
               if (provLeaveType.leaveTypeList.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32.0),
-                  child: Center(child: CircularProgressIndicator()),
+                  padding: EdgeInsets.symmetric(
+                    vertical: 32.0,
+                  ),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 );
               }
 
               return ListView.separated(
                 shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                ),
                 itemCount: provLeaveType.leaveTypeList.length,
                 itemBuilder: (context, index) {
                   final leaveType = provLeaveType.leaveTypeList[index];
+
                   final bool isSelected = _selectedLeaveType == leaveType;
 
                   return ListTile(
@@ -673,16 +645,22 @@ class _FormCutiPageState extends State<FormCutiPage> {
                       ),
                     ),
                     trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        ? const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                          )
                         : null,
                     onTap: () {
-                      _onLeaveTypeSelected(leaveType);
+                      _onLeaveTypeSelected(
+                        leaveType,
+                      );
                       Navigator.pop(context);
                     },
                   );
                 },
-                separatorBuilder: (context, index) =>
-                    const Divider(height: 1.0),
+                separatorBuilder: (context, index) => const Divider(
+                  height: 1.0,
+                ),
               );
             },
           ),
@@ -692,13 +670,6 @@ class _FormCutiPageState extends State<FormCutiPage> {
   }
 }
 
-/// A bordered input box that hooks into the ancestor [Form] for validation,
-/// but keeps the error message as a separate line BELOW the box instead of
-/// inside the same decorator (which is what made the box look like it grew
-/// into a multiline field).
-///
-/// Listens directly to [controller] so validation/error state stays in sync
-/// whether the text changes from typing OR from code (date/time pickers).
 class _BorderedFormField extends StatefulWidget {
   final String label;
   final TextEditingController controller;
@@ -731,17 +702,25 @@ class _BorderedFormFieldState extends State<_BorderedFormField> {
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_handleControllerChanged);
+
+    widget.controller.addListener(
+      _handleControllerChanged,
+    );
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_handleControllerChanged);
+    widget.controller.removeListener(
+      _handleControllerChanged,
+    );
+
     super.dispose();
   }
 
   void _handleControllerChanged() {
-    _fieldKey.currentState?.didChange(widget.controller.text);
+    _fieldKey.currentState?.didChange(
+      widget.controller.text,
+    );
   }
 
   @override
@@ -762,9 +741,14 @@ class _BorderedFormFieldState extends State<_BorderedFormField> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color:
-                        widget.enabled ? Colors.white : const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(5.0),
+                    color: widget.enabled
+                        ? Colors.white
+                        : const Color(
+                            0xFFF5F5F5,
+                          ),
+                    borderRadius: BorderRadius.circular(
+                      5.0,
+                    ),
                     border: Border.all(
                       color: state.hasError ? Colors.red : _lightGray,
                       width: 1.0,
@@ -775,22 +759,29 @@ class _BorderedFormFieldState extends State<_BorderedFormField> {
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 12.0,
+                        horizontal: 8.0,
+                      ),
                     ),
                     onTap: widget.enabled ? widget.onTap : null,
                     keyboardType: widget.keyboardType ?? TextInputType.text,
                     maxLines: widget.multiline ? null : 1,
                     readOnly: widget.readOnly || !widget.enabled,
                     enabled: widget.enabled,
-                    onChanged: (value) => state.didChange(value),
+                    onChanged: (value) => state.didChange(
+                      value,
+                    ),
                   ),
                 ),
                 if (state.hasError) ...[
                   const SizedBox(height: 4.0),
                   Text(
                     state.errorText ?? '',
-                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12.0,
+                    ),
                   ),
                 ],
               ],

@@ -7,7 +7,7 @@ class LeaveTypeService {
 
   Future<List<LeaveTypeModel>> getLeaveTypes() async {
     try {
-      final response = await _apiService.get('reference/jenis-cuti');
+      final response = await _apiService.get('reference/jenis-cuti/show');
       final raw = response.data;
 
       // raw is expected to be a Map like {"status":.., "message":.., "data": ...}
