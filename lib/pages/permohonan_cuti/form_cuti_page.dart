@@ -613,13 +613,65 @@ class _FormCutiPageState extends State<FormCutiPage> {
           const Divider(height: 1.0),
           Consumer<LeaveTypeProvider>(
             builder: (context, provLeaveType, _) {
-              if (provLeaveType.leaveTypeList.isEmpty) {
+              if (provLeaveType.isLoading &&
+                  provLeaveType.leaveTypeList.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(
                     vertical: 32.0,
                   ),
                   child: Center(
                     child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              if (provLeaveType.errorMessage != null &&
+                  provLeaveType.leaveTypeList.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 24.0,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: 32.0,
+                      ),
+                      const SizedBox(height: 8.0),
+                      Text(
+                        provLeaveType.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+                      TextButton(
+                        onPressed: () => provLeaveType.fetchLeaveTypes(
+                          force: true,
+                        ),
+                        child: const Text('Coba lagi'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (provLeaveType.leaveTypeList.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: 24.0,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Tidak ada jenis cuti/izin tersedia.',
+                      style: TextStyle(
+                        color: Colors.black54,
+                      ),
+                    ),
                   ),
                 );
               }
