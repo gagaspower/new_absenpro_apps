@@ -37,10 +37,6 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchInitial());
   }
 
-  /// Cari periode yang cocok bulan-tahun sekarang dari [periodeList].
-  /// Format value dari server: "M - yyyy" (bulan tanpa leading zero,
-  /// contoh "1 - 2026" = Januari 2026).
-  /// Fallback item pertama list (list biasa terurut periode terbaru duluan).
   PeriodeModel? _findCurrentPeriode(List<PeriodeModel> periodeList) {
     if (periodeList.isEmpty) return null;
     final now = DateTime.now();
@@ -54,9 +50,12 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
 
   void _fetchInitial({PeriodeModel? periode, String? status}) {
     _activePeriode = periode?.periodeValue ?? _activePeriode;
-    if (status != _activeStatus || periode != null) {
-      _activeStatus = status ?? _activeStatus;
-    }
+
+    // `null` adalah nilai valid untuk status "Semua".
+    // Jangan gunakan `status ?? _activeStatus`, karena itu membuat
+    // Reset/Terapkan "Semua" tetap mempertahankan status sebelumnya.
+    _activeStatus = status;
+
     context.read<LeaveRequestHistoryProvider>().fetchInitial(
           periode: _activePeriode,
           status: _activeStatus,
@@ -203,14 +202,13 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
                             child: OutlinedButton(
                               onPressed: () {
                                 final resetPeriode = _findCurrentPeriode(
-                                    periodeProvider.periodeList);
-                                setSheetState(() {
-                                  tempPeriode = resetPeriode;
-                                  tempStatus = null;
-                                });
+                                  periodeProvider.periodeList,
+                                );
+
                                 if (resetPeriode != null) {
                                   periodeProvider.selectPeriode(resetPeriode);
                                 }
+
                                 Navigator.pop(sheetContext);
                                 _fetchInitial(
                                   periode: resetPeriode,
@@ -334,7 +332,10 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
                   final activePeriode =
                       context.read<PeriodeProvider>().selectedPeriode;
                   if (activePeriode != null) {
-                    _fetchInitial(periode: activePeriode);
+                    _fetchInitial(
+                      periode: activePeriode,
+                      status: _activeStatus,
+                    );
                   }
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -400,8 +401,6 @@ class _HistoriCutiTabState extends State<HistoriCutiTab> {
   }
 }
 
-/// Chip filter (periode/status) untuk bottomsheet.
-/// Default: border secondary bootstrap. Selected: alert success bootstrap.
 class _FilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -530,7 +529,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
 }
 
 class _HistoriCard extends StatelessWidget {
-  final dynamic item; // LeaveRequestModel
+  final dynamic item;
 
   const _HistoriCard({required this.item});
 
@@ -589,9 +588,9 @@ class _HistoriCard extends StatelessWidget {
                       onTap: () {
                         // TODO: arahkan ke halaman detail histori
                       },
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
+                        children: [
                           Text(
                             'Detail',
                             style: TextStyle(
