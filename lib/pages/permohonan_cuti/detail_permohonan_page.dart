@@ -1,5 +1,6 @@
 import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 import 'package:absenpro/pages/histori_tabs/histori_models.dart';
+import 'package:absenpro/pages/permohonan_cuti/status_permohonan_page.dart';
 import 'package:flutter/material.dart';
 
 /// Halaman detail permohonan cuti/izin — dibuka dari kartu histori.
@@ -102,9 +103,11 @@ class DetailPermohonanPage extends StatelessWidget {
               InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
-                  // TODO: arahkan ke halaman/timeline status permohonan
-                  // (item.approvals / item.logs sudah tersedia di model
-                  // untuk menampilkan riwayat persetujuan).
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const StatusPermohonanPage()),
+                  );
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
