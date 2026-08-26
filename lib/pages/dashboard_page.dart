@@ -99,6 +99,10 @@ class _DashboardPageState extends State<DashboardPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _selectPage(int index) {
+    setState(() => _currentIndex = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,13 +115,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void _selectPage(int index) {
-    setState(() => _currentIndex = index);
-  }
-
   Widget _buildBottomNavigationBar() {
     return SizedBox(
-      height: 85,
+      height: 59,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -214,7 +214,7 @@ class _DashboardPageState extends State<DashboardPage> {
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
         width: 72,
-        height: 68,
+        height: 59,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
