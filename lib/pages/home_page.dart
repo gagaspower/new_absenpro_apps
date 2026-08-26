@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:absenpro/helpers/time_helper.dart';
+import 'package:absenpro/pages/histori_page.dart';
 import 'package:absenpro/pages/permohonan_cuti/form_cuti_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
@@ -233,6 +234,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           label: 'Kehadiran',
           bgColor: const Color(0xFFD4EDDA),
           iconColor: const Color(0xFF176B2E),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoriPage()),
+            );
+          },
         ),
       ],
     );
