@@ -1,9 +1,9 @@
 import 'dart:async';
+
 import 'package:absenpro/helpers/time_helper.dart';
-import 'package:absenpro/models/attendance/attendance_model.dart';
-import 'package:absenpro/pages/attendance/attendance_page.dart';
-import 'package:absenpro/providers/auth/auth_provider.dart';
+import 'package:absenpro/pages/histori_page.dart';
 import 'package:absenpro/pages/permohonan_cuti/form_cuti_page.dart';
+import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,10 +15,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  static const Color primaryTeal = Color(0xFF2FC7CF);
-  static const Color absenPulangColor = Color(0xFFFF9B9B);
-  static const Color disabledBg = Color(0xFFE0E0E0);
-  static const Color disabledFg = Color(0xFF9E9E9E);
+  static const Color primaryTeal = Color(0xFF30CBD7);
+  // Same soft neutral background as the dashboard shell, so Home doesn't
+  // flash pure white while its own Scaffold paints.
+  static const Color softBackground = Color(0xFFF4F5F7);
 
   late String _greeting;
   Timer? _clockTimer;
@@ -26,18 +26,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _greeting = TimeHelper.greeting();
+    WidgetsBinding.instance.addObserver(this);
 
-    // Cek ulang tiap detik — supaya salam dan status aktif/nonaktif tombol
-    // absen ter-update mendekati realtime, tanpa perlu buka-tutup app.
+    _greeting = TimeHelper.greeting();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _greeting = TimeHelper.greeting());
+      final greeting = TimeHelper.greeting();
+      if (greeting != _greeting) {
+        setState(() => _greeting = greeting);
+      }
     });
 
-    // Sinkron status absen hari ini ke server begitu Home pertama kali
-    // dibuka — jangan cuma andalkan cache attendance_today dari login
-    // terakhir.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AuthProvider>().refreshTodayAttendance();
@@ -46,9 +45,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Sinkron ulang juga saat app kembali dibuka dari background —
-    // menutup kasus di laporan bug: user tidak logout, app dibiarkan
-    // idle sampai hari berganti, lalu dibuka lagi.
     if (state == AppLifecycleState.resumed) {
       context.read<AuthProvider>().refreshTodayAttendance();
     }
@@ -61,48 +57,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// Validasi ulang jendela waktu TEPAT SAAT tombol ditekan — jangan cuma
-  /// andalkan status `canCheckIn`/`canCheckOut` dari hasil build terakhir,
-  /// karena bisa saja beda beberapa saat sama kondisi sekarang (misal user
-  /// nge-tap pas jendela waktu baru saja tertutup).
-  Future<void> _handleAbsen({
-    required bool isCheckIn,
-    required String? start,
-    required String? end,
-  }) async {
-    final stillValid = TimeHelper.isWithinRange(start, end);
-
-    if (!stillValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isCheckIn
-                ? 'Jendela waktu absen masuk sudah tertutup'
-                : 'Jendela waktu absen pulang sudah tertutup',
-          ),
-        ),
-      );
-      setState(() {}); // paksa rebuild supaya tombol langsung ikut nonaktif
-      return;
-    }
-
-    // Buka halaman selfie untuk verifikasi wajah — panggil API absen
-    // (POST reference/absen/masuk) baru terjadi di dalam AbsenSelfiePage
-    // setelah foto diambil & lolos cek wajah, bukan di sini.
-    final attendance = await Navigator.push<AttendanceModel?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AbsenSelfiePage(isCheckIn: isCheckIn),
-      ),
-    );
-
-    // Kalau berhasil, simpan data attendance terbaru dari backend ke local storage
-    // agar status absen di Home langsung ter-update.
-    if (attendance != null && mounted) {
-      await context.read<AuthProvider>().updateAttendanceFromServer(attendance);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
@@ -112,173 +66,51 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final displayName = employee?.fullName ?? user?.name ?? '-';
     final shiftText = shift != null ? '${shift.name} | ${shift.jamKerja}' : '-';
 
-    final attendance = employee?.attendanceToday;
-    final hasCheckedIn = attendance?.hasCheckedIn ?? false;
-    final hasCheckedOut = attendance?.hasCheckedOut ?? false;
-
-    // Window absen masuk & pulang, sesuai jam yang diatur di data shift —
-    // DAN belum dilakukan hari ini (mencegah absen 2x).
-    final withinCheckInWindow = shift != null &&
-        TimeHelper.isWithinRange(shift.checkInStart, shift.checkInEnd);
-    final withinCheckOutWindow = shift != null &&
-        TimeHelper.isWithinRange(shift.checkOutStart, shift.checkOutEnd);
-
-    final canCheckIn = withinCheckInWindow && !hasCheckedIn;
-    // Absen pulang butuh sudah absen masuk duluan hari itu.
-    final canCheckOut = withinCheckOutWindow && hasCheckedIn && !hasCheckedOut;
-
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: salam + nama + notifikasi
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _greeting,
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-                _buildNotificationButton(),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Kartu jadwal hari ini
-            _buildJadwalCard(shiftText),
-            const SizedBox(height: 28),
-
-            // Menu: Izin & Cuti, Lembur, Agenda
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildMenuItem(
-                    icon: Icons.send_outlined,
-                    label: 'Izin & Cuti',
-                    bgColor: const Color(0xFFFBE0E4),
-                    iconColor: const Color(0xFFE0637A),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FormCutiPage(),
+    return Scaffold(
+      backgroundColor: softBackground,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(26, 32, 26, 110),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _greeting,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black54,
+                          letterSpacing: -0.4,
                         ),
-                      );
-                    }),
-                _buildMenuItem(
-                  icon: Icons.nightlight_round,
-                  label: 'Lembur',
-                  bgColor: const Color(0xFFDCEBFA),
-                  iconColor: const Color(0xFF4A87C9),
-                ),
-                _buildMenuItem(
-                  icon: Icons.event_note_outlined,
-                  label: 'Agenda',
-                  bgColor: const Color(0xFFFBF0D2),
-                  iconColor: const Color(0xFFC9A23B),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Tombol Absen masuk
-            SizedBox(
-              height: 52,
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: canCheckIn
-                    ? () => _handleAbsen(
-                          isCheckIn: true,
-                          start: shift.checkInStart,
-                          end: shift.checkInEnd,
-                        )
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryTeal,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: disabledBg,
-                  disabledForegroundColor: disabledFg,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                child: const Text(
-                  'Absen masuk',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
+                  _buildNotificationButton(),
+                ],
               ),
-            ),
-            if (!canCheckIn && shift?.checkInStart != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6, left: 4),
-                child: Text(
-                  hasCheckedIn
-                      ? 'Anda sudah absen masuk hari ini'
-                      : 'Absen masuk hanya bisa jam ${shift!.checkInStart} - ${shift.checkInEnd}',
-                  style: const TextStyle(fontSize: 11, color: Colors.black38),
-                ),
-              ),
-            const SizedBox(height: 12),
-
-            // Tombol Absen pulang
-            SizedBox(
-              height: 52,
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: canCheckOut
-                    ? () => _handleAbsen(
-                          isCheckIn: false,
-                          start: shift.checkOutStart,
-                          end: shift.checkOutEnd,
-                        )
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: absenPulangColor,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: disabledBg,
-                  disabledForegroundColor: disabledFg,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  'Absen pulang',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-            if (!canCheckOut && shift?.checkOutStart != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6, left: 4),
-                child: Text(
-                  hasCheckedOut
-                      ? 'Anda sudah absen pulang hari ini'
-                      : !hasCheckedIn
-                          ? 'Anda belum absen masuk hari ini'
-                          : 'Absen pulang hanya bisa jam ${shift!.checkOutStart} - ${shift.checkOutEnd}',
-                  style: const TextStyle(fontSize: 11, color: Colors.black38),
-                ),
-              ),
-          ],
+              const SizedBox(height: 40),
+              _buildJadwalCard(shiftText),
+              const SizedBox(height: 50),
+              _buildMenuGrid(),
+            ],
+          ),
         ),
       ),
     );
@@ -286,32 +118,37 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Widget _buildNotificationButton() {
     return Container(
-      width: 44,
-      height: 44,
+      width: 47,
+      height: 47,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: const Stack(
+      child: Stack(
         alignment: Alignment.center,
         children: [
-          Icon(Icons.notifications_none, color: primaryTeal, size: 22),
+          const Icon(
+            Icons.notifications_none_outlined,
+            color: primaryTeal,
+            size: 22,
+          ),
           Positioned(
-            top: 10,
-            right: 11,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.redAccent,
+            top: 11,
+            right: 10,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFF9FB2),
                 shape: BoxShape.circle,
               ),
-              child: SizedBox(width: 8, height: 8),
             ),
           ),
         ],
@@ -321,36 +158,100 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Widget _buildJadwalCard(String shiftText) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
+      height: 87,
+      padding: const EdgeInsets.fromLTRB(18, 16, 20, 14),
       decoration: BoxDecoration(
         color: primaryTeal,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: primaryTeal.withOpacity(0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Jadwal Hari ini',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                'Jadwal hari ini',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.4,
+                ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 7),
               Text(
                 shiftText,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
                 ),
               ),
             ],
           ),
-          const Icon(Icons.calendar_today_outlined,
-              color: Colors.white, size: 22),
+          const Icon(
+            Icons.calendar_month_outlined,
+            color: Colors.white,
+            size: 24,
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMenuGrid() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildMenuItem(
+          icon: Icons.send_outlined,
+          label: 'Izin & Cuti',
+          bgColor: const Color(0xFFF8D7DA),
+          iconColor: const Color(0xFF7C1F2C),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FormCutiPage()),
+            );
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.nightlight_outlined,
+          label: 'Lembur',
+          bgColor: const Color(0xFFCCE5FF),
+          iconColor: const Color(0xFF07549B),
+        ),
+        _buildMenuItem(
+          icon: Icons.calendar_month_outlined,
+          label: 'Agenda',
+          bgColor: const Color(0xFFFFF3CD),
+          iconColor: const Color(0xFF8B6500),
+        ),
+        _buildMenuItem(
+          icon: Icons.access_time_outlined,
+          label: 'Kehadiran',
+          bgColor: const Color(0xFFD4EDDA),
+          iconColor: const Color(0xFF176B2E),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoriPage()),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -361,28 +262,47 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required Color iconColor,
     VoidCallback? onTap,
   }) {
+    // Boxes trimmed down slightly from 74x74 -> 66x66 (kept square and
+    // evenly spaced by the parent Row) so the grid feels a bit lighter
+    // without breaking proportions with the icon/label below it.
     return GestureDetector(
-      onTap: onTap ??
-          () {
-            // TODO: arahkan ke halaman terkait (Izin & Cuti / Lembur / Agenda)
-          },
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 70,
+        child: Column(
+          children: [
+            Container(
+              width: 66,
+              height: 66,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
-            child: Icon(icon, color: iconColor, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: Colors.black87,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
