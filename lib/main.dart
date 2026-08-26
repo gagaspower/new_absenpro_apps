@@ -43,8 +43,7 @@ class MyApp extends StatelessWidget {
         title: 'Absen Pro',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          fontFamily:
-              'Questrial', // hapus baris ini kalau font belum ditambahkan
+          fontFamily: 'Nunito', // hapus baris ini kalau font belum ditambahkan
           scaffoldBackgroundColor: const Color(0xFFFAFAFA),
         ),
         home: const SplashPage(),

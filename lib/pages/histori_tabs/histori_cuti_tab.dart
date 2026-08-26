@@ -1,4 +1,5 @@
 import 'package:absenpro/models/periode/periode_model.dart';
+import 'package:absenpro/pages/permohonan_cuti/detail_permohonan_page.dart';
 import 'package:absenpro/providers/periode/periode_provider.dart';
 import 'package:absenpro/providers/leave_request/leave_request_history_provider.dart';
 import 'package:absenpro/widgets/empty_state_widget.dart';
@@ -586,7 +587,11 @@ class _HistoriCard extends StatelessWidget {
                     ),
                     GestureDetector(
                       onTap: () {
-                        // TODO: arahkan ke halaman detail histori
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => DetailPermohonanPage(item: item)),
+                        );
                       },
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,

@@ -55,7 +55,6 @@ class _HistoriPageState extends State<HistoriPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Histori Absensi'),
-        automaticallyImplyLeading: false, // tidak ada tombol back
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0.5,

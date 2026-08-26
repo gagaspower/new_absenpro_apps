@@ -88,8 +88,11 @@ flutter:
     - family: Questrial
       fonts:
         - asset: assets/fonts/Questrial/Questrial-Regular.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
+    #       - asset: fonts/TrajanPro_Bold.ttf
+    #         weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito/Nunito-regular.ttf
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
