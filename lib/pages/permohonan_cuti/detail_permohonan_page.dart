@@ -106,7 +106,8 @@ class DetailPermohonanPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const StatusPermohonanPage()),
+                      builder: (_) => StatusPermohonanPage(item: item),
+                    ),
                   );
                 },
                 child: Container(

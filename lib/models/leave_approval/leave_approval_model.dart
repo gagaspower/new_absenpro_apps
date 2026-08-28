@@ -1,64 +1,78 @@
 class LeaveApprovalModel {
   final String id;
-  final String leaveRequestId;
-  final String approverId;
-  final String? approverName;
-  final int level;
-  final String status; // pending, approved, rejected, skipped
+  final int? urutan;
+  final String status;
   final String? note;
-  final String? respondedAt;
-  final String? createdAt;
-  final String? updatedAt;
+  final String? actedAt;
+  final LeaveApprovalRoleModel? role;
+  final LeaveApprovalApproverModel? approver;
 
   LeaveApprovalModel({
     required this.id,
-    required this.leaveRequestId,
-    required this.approverId,
-    this.approverName,
-    required this.level,
+    this.urutan,
     required this.status,
     this.note,
-    this.respondedAt,
-    this.createdAt,
-    this.updatedAt,
+    this.actedAt,
+    this.role,
+    this.approver,
   });
 
   factory LeaveApprovalModel.fromJson(Map<String, dynamic> json) {
-    // Backend bisa kirim approver_id sebagai id polos, atau nested object
-    // "approver": {"id":.., "name":..} — tangani dua-duanya.
-    final approver = json['approver'];
-    final approverId = approver is Map
-        ? approver['id']?.toString() ?? ''
-        : json['approver_id']?.toString() ?? '';
-    final approverName = approver is Map ? approver['name']?.toString() : null;
-
     return LeaveApprovalModel(
       id: json['id']?.toString() ?? '',
-      leaveRequestId: json['leave_request_id']?.toString() ?? '',
-      approverId: approverId,
-      approverName: approverName,
-      level: json['level'] is int
-          ? json['level']
-          : int.tryParse(json['level']?.toString() ?? '') ?? 0,
+      urutan: json['urutan'] == null
+          ? null
+          : int.tryParse(json['urutan'].toString()),
       status: json['status']?.toString() ?? '',
       note: json['note']?.toString(),
-      respondedAt: json['responded_at']?.toString(),
-      createdAt: json['created_at']?.toString(),
-      updatedAt: json['updated_at']?.toString(),
+      actedAt: json['acted_at']?.toString(),
+      role: json['role'] is Map
+          ? LeaveApprovalRoleModel.fromJson(
+              Map<String, dynamic>.from(json['role']),
+            )
+          : null,
+      approver: json['approver'] is Map
+          ? LeaveApprovalApproverModel.fromJson(
+              Map<String, dynamic>.from(json['approver']),
+            )
+          : null,
     );
   }
+}
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'leave_request_id': leaveRequestId,
-      'approver_id': approverId,
-      'level': level,
-      'status': status,
-      'note': note,
-      'responded_at': respondedAt,
-      'created_at': createdAt,
-      'updated_at': updatedAt,
-    };
+class LeaveApprovalRoleModel {
+  final String id;
+  final String namaRole;
+
+  LeaveApprovalRoleModel({
+    required this.id,
+    required this.namaRole,
+  });
+
+  factory LeaveApprovalRoleModel.fromJson(Map<String, dynamic> json) {
+    return LeaveApprovalRoleModel(
+      id: json['id']?.toString() ?? '',
+      namaRole: json['nama_role']?.toString() ?? '',
+    );
+  }
+}
+
+class LeaveApprovalApproverModel {
+  final String id;
+  final String name;
+  final String username;
+
+  LeaveApprovalApproverModel({
+    required this.id,
+    required this.name,
+    required this.username,
+  });
+
+  factory LeaveApprovalApproverModel.fromJson(Map<String, dynamic> json) {
+    return LeaveApprovalApproverModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+    );
   }
 }

@@ -1,61 +1,125 @@
+import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 import 'package:flutter/material.dart';
 
-/// Halaman "Status Permohonan" — dibuka dari tombol/aksi "Lihat Status
-/// Permohonan" pada halaman detail permohonan cuti/izin.
-///
-/// Halaman ini masih berdiri sendiri (belum ada provider/model terkait),
-/// jadi seluruh datanya di-hardcode sesuai mockup. Saat backend untuk
-/// status permohonan sudah tersedia, tinggal ganti `_steps` dan data
-/// ringkasan (`_SummaryData`) dengan data asli dari provider, misalnya
-/// dengan menerima `LeaveRequestModel` lewat constructor.
 class StatusPermohonanPage extends StatelessWidget {
-  const StatusPermohonanPage({super.key});
+  final LeaveRequestModel item;
+
+  const StatusPermohonanPage({
+    super.key,
+    required this.item,
+  });
 
   static const Color primaryTeal = Color(0xFF2FC7CF);
   static const Color softBackground = Color(0xFFF4F5F7);
 
-  // --- Dummy data, sesuai mockup ---------------------------------------
-  static const _summary = _SummaryData(
-    idPermohonan: '#10924',
-    statusLabel: 'Dalam Proses',
-    jenisCuti: 'Cuti Tahunan',
-    tanggal: '25 - 28 Agustus 2026 (4 Hari)',
-  );
+  String _formatDateTime(String? value) {
+    if (value == null || value.isEmpty) {
+      return '';
+    }
 
-  static const List<PermohonanStep> _steps = [
-    PermohonanStep(
-      title: 'Permohonan Dibuat',
-      subtitle: 'Draft tersimpan di sistem',
-      time: '20 Agt 2026, 09:00',
-      status: PermohonanStepStatus.done,
-    ),
-    PermohonanStep(
-      title: 'Diajukan ke Atasan',
-      subtitle: 'Menunggu tanggapan Manager',
-      time: '20 Agt 2026, 09:15',
-      status: PermohonanStepStatus.done,
-    ),
-    PermohonanStep(
-      title: 'Review oleh Atasan Langsung',
-      subtitle: 'Sedang ditinjau oleh Budi Santoso (Manager)',
-      time: '21 Agt 2026',
-      status: PermohonanStepStatus.current,
-    ),
-    PermohonanStep(
-      title: 'Persetujuan HR',
-      subtitle: 'Proses verifikasi oleh Tim HR',
-      status: PermohonanStepStatus.pending,
-    ),
-    PermohonanStep(
-      title: 'Selesai / Disetujui',
-      subtitle: 'Cuti terdaftar resmi di sistem',
-      status: PermohonanStepStatus.pending,
-    ),
-  ];
-  // -----------------------------------------------------------------------
+    try {
+      final date = DateTime.parse(value).toLocal();
+
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agu',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
+
+      return '${date.day} ${months[date.month - 1]} ${date.year}, '
+          '${date.hour.toString().padLeft(2, '0')}:'
+          '${date.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return value;
+    }
+  }
+
+  String _formatDateRange() {
+    final start = item.startDate;
+    final end = item.endDate;
+
+    final days = item.totalDays % 1 == 0
+        ? item.totalDays.toStringAsFixed(0)
+        : item.totalDays.toStringAsFixed(1);
+
+    if (start == end) {
+      return '$start ($days Hari)';
+    }
+
+    return '$start - $end ($days Hari)';
+  }
+
+  PermohonanStepStatus _mapStatus(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'completed':
+        return PermohonanStepStatus.done;
+
+      case 'current':
+        return PermohonanStepStatus.current;
+
+      case 'rejected':
+        return PermohonanStepStatus.rejected;
+
+      case 'pending':
+      default:
+        return PermohonanStepStatus.pending;
+    }
+  }
+
+  List<PermohonanStep> _buildSteps() {
+    return item.timeline.map((timeline) {
+      final status = _mapStatus(timeline.status);
+
+      String? time;
+
+      if (timeline.actedAt != null && timeline.actedAt!.trim().isNotEmpty) {
+        time = _formatDateTime(timeline.actedAt);
+      }
+
+      return PermohonanStep(
+        title: timeline.title,
+        subtitle: timeline.description,
+        time: time,
+        status: status,
+      );
+    }).toList();
+  }
+
+  String _statusLabel() {
+    switch (item.status.toLowerCase().trim()) {
+      case 'approved':
+        return 'Disetujui';
+
+      case 'rejected':
+        return 'Ditolak';
+
+      case 'cancelled':
+        return 'Dibatalkan';
+
+      case 'draft':
+        return 'Draft';
+
+      case 'pending':
+        return 'Dalam Proses';
+
+      default:
+        return item.status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final steps = _buildSteps();
+
     return Scaffold(
       backgroundColor: softBackground,
       appBar: AppBar(
@@ -83,9 +147,14 @@ class StatusPermohonanPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SummaryCard(data: _summary),
+                    _SummaryCard(
+                      requestNumber: item.requestNumber,
+                      statusLabel: _statusLabel(),
+                      jenisCuti: item.leaveType?.name ?? '-',
+                      tanggal: _formatDateRange(),
+                    ),
                     const SizedBox(height: 16),
-                    _TimelineCard(steps: _steps),
+                    _TimelineCard(steps: steps),
                   ],
                 ),
               ),
@@ -103,10 +172,15 @@ class StatusPermohonanPage extends StatelessWidget {
 }
 
 // ============================================================================
-// Data models
+// Timeline
 // ============================================================================
 
-enum PermohonanStepStatus { done, current, pending }
+enum PermohonanStepStatus {
+  done,
+  current,
+  pending,
+  rejected,
+}
 
 class PermohonanStep {
   final String title;
@@ -122,28 +196,22 @@ class PermohonanStep {
   });
 }
 
-class _SummaryData {
-  final String idPermohonan;
-  final String statusLabel;
-  final String jenisCuti;
-  final String tanggal;
+// ============================================================================
+// Summary
+// ============================================================================
 
-  const _SummaryData({
-    required this.idPermohonan,
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.requestNumber,
     required this.statusLabel,
     required this.jenisCuti,
     required this.tanggal,
   });
-}
 
-// ============================================================================
-// Summary card (ID, status badge, jenis cuti, tanggal)
-// ============================================================================
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.data});
-
-  final _SummaryData data;
+  final String requestNumber;
+  final String statusLabel;
+  final String jenisCuti;
+  final String tanggal;
 
   @override
   Widget build(BuildContext context) {
@@ -168,19 +236,19 @@ class _SummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'ID Permohonan: ${data.idPermohonan}',
+                requestNumber.isEmpty ? 'Permohonan' : requestNumber,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: Colors.black54,
                 ),
               ),
-              _StatusBadge(label: data.statusLabel),
+              _StatusBadge(label: statusLabel),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            data.jenisCuti,
+            jenisCuti,
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -191,13 +259,19 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.calendar_month_outlined,
-                  size: 16, color: Colors.black45),
+              const Icon(
+                Icons.calendar_month_outlined,
+                size: 16,
+                color: Colors.black45,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  data.tanggal,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  tanggal,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
                 ),
               ),
             ],
@@ -209,17 +283,24 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label});
+  const _StatusBadge({
+    required this.label,
+  });
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE7F1FF),
-        borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE7F1FF),
+        borderRadius: BorderRadius.all(
+          Radius.circular(20),
+        ),
       ),
       child: Text(
         label,
@@ -234,16 +315,36 @@ class _StatusBadge extends StatelessWidget {
 }
 
 // ============================================================================
-// Timeline card
+// Timeline Card
 // ============================================================================
 
 class _TimelineCard extends StatelessWidget {
-  const _TimelineCard({required this.steps});
+  const _TimelineCard({
+    required this.steps,
+  });
 
   final List<PermohonanStep> steps;
 
   @override
   Widget build(BuildContext context) {
+    if (steps.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          'Belum ada riwayat status permohonan.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.black54,
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 4),
@@ -259,33 +360,48 @@ class _TimelineCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        children: List.generate(steps.length, (index) {
-          return _TimelineRow(
-            step: steps[index],
-            isLast: index == steps.length - 1,
-          );
-        }),
+        children: List.generate(
+          steps.length,
+          (index) {
+            return _TimelineRow(
+              step: steps[index],
+              isLast: index == steps.length - 1,
+            );
+          },
+        ),
       ),
     );
   }
 }
 
+// ============================================================================
+// Timeline Row
+// ============================================================================
+
 class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({required this.step, required this.isLast});
+  const _TimelineRow({
+    required this.step,
+    required this.isLast,
+  });
 
   final PermohonanStep step;
   final bool isLast;
 
   static const Color _green = Color(0xFF2FB380);
   static const Color _blue = Color(0xFF2F6FE0);
+  static const Color _red = Color(0xFFD9534F);
   static const Color _greyFill = Color(0xFFE7E8EA);
   static const Color _greyDot = Color(0xFFC7C9CC);
+
   static const double _nodeSize = 26;
 
   @override
   Widget build(BuildContext context) {
     final isDone = step.status == PermohonanStepStatus.done;
     final isCurrent = step.status == PermohonanStepStatus.current;
+    final isRejected = step.status == PermohonanStepStatus.rejected;
+
+    final nodeColor = isRejected ? _red : null;
 
     return IntrinsicHeight(
       child: Row(
@@ -293,13 +409,21 @@ class _TimelineRow extends StatelessWidget {
         children: [
           Column(
             children: [
-              _buildNode(isDone: isDone, isCurrent: isCurrent),
+              _buildNode(
+                isDone: isDone,
+                isCurrent: isCurrent,
+                isRejected: isRejected,
+              ),
               if (!isLast)
                 Expanded(
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 2),
-                    color: isDone ? _green : _greyFill,
+                    color: isDone
+                        ? _green
+                        : isRejected
+                            ? _red
+                            : _greyFill,
                   ),
                 ),
             ],
@@ -307,7 +431,9 @@ class _TimelineRow extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 16 : 26),
+              padding: EdgeInsets.only(
+                bottom: isLast ? 16 : 26,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -320,14 +446,14 @@ class _TimelineRow extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: (isDone || isCurrent)
+                            color: (isDone || isCurrent || isRejected)
                                 ? Colors.black87
                                 : Colors.black45,
                             letterSpacing: -0.2,
                           ),
                         ),
                       ),
-                      if (step.time != null) ...[
+                      if (step.time != null && step.time!.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(
                           step.time!,
@@ -344,12 +470,22 @@ class _TimelineRow extends StatelessWidget {
                     step.subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-                      color: isCurrent
-                          ? _blue
-                          : (isDone ? Colors.black54 : Colors.black38),
+                      fontWeight: isCurrent || isRejected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isRejected
+                          ? _red
+                          : isCurrent
+                              ? _blue
+                              : isDone
+                                  ? Colors.black54
+                                  : Colors.black38,
                     ),
                   ),
+                  if (step.status == PermohonanStepStatus.rejected &&
+                      step.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                  ],
                 ],
               ),
             ),
@@ -359,16 +495,45 @@ class _TimelineRow extends StatelessWidget {
     );
   }
 
-  Widget _buildNode({required bool isDone, required bool isCurrent}) {
+  Widget _buildNode({
+    required bool isDone,
+    required bool isCurrent,
+    required bool isRejected,
+  }) {
+    if (isRejected) {
+      return Container(
+        width: _nodeSize,
+        height: _nodeSize,
+        decoration: const BoxDecoration(
+          color: _red,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.close,
+          size: 15,
+          color: Colors.white,
+        ),
+      );
+    }
+
     if (isDone) {
       return Container(
         width: _nodeSize,
         height: _nodeSize,
-        decoration: const BoxDecoration(color: _green, shape: BoxShape.circle),
+        decoration: const BoxDecoration(
+          color: _green,
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
-        child: const Icon(Icons.check, size: 15, color: Colors.white),
+        child: const Icon(
+          Icons.check,
+          size: 15,
+          color: Colors.white,
+        ),
       );
     }
+
     if (isCurrent) {
       return Container(
         width: _nodeSize,
@@ -376,33 +541,45 @@ class _TimelineRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: _blue, width: 2),
+          border: Border.all(
+            color: _blue,
+            width: 2,
+          ),
         ),
         alignment: Alignment.center,
         child: Container(
           width: 9,
           height: 9,
-          decoration: const BoxDecoration(color: _blue, shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: _blue,
+            shape: BoxShape.circle,
+          ),
         ),
       );
     }
+
     return Container(
       width: _nodeSize,
       height: _nodeSize,
-      decoration: const BoxDecoration(color: _greyFill, shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: _greyFill,
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Container(
         width: 7,
         height: 7,
-        decoration:
-            const BoxDecoration(color: _greyDot, shape: BoxShape.circle),
+        decoration: const BoxDecoration(
+          color: _greyDot,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
 }
 
 // ============================================================================
-// Bottom action button
+// Bottom Button
 // ============================================================================
 
 class _BottomButton extends StatelessWidget {

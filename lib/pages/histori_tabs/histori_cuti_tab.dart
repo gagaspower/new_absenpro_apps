@@ -586,27 +586,38 @@ class _HistoriCard extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => DetailPermohonanPage(item: item)),
+                            builder: (_) => DetailPermohonanPage(item: item),
+                          ),
                         );
                       },
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Detail',
-                            style: TextStyle(
-                              fontSize: 12,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Detail',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black45,
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 12,
                               color: Colors.black45,
                             ),
-                          ),
-                          SizedBox(width: 2),
-                          Icon(Icons.arrow_forward,
-                              size: 12, color: Colors.black45),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
