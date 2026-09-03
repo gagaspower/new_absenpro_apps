@@ -8,6 +8,9 @@ class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
 
   static const Color primaryTeal = Color(0xFF2FC7CF);
+  // Sama dengan softBackground di DashboardPage — biar body tab ini nyatu
+  // warnanya dengan area di belakang bottom navigation yang melayang.
+  static const Color softBackground = Color(0xFFF4F5F7);
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -27,6 +30,7 @@ class _ProfilPageState extends State<ProfilPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: ProfilPage.softBackground,
       appBar: AppBar(
         title: const Text('Profil Pegawai'),
         automaticallyImplyLeading: false, // tidak ada tombol back

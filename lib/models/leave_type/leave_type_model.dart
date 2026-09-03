@@ -6,7 +6,7 @@ class LeaveTypeModel {
   final String unit;
   final bool isPaid;
   final bool deductQuota;
-  final int requireAttachment;
+  final bool requireAttachment;
   final int? maxDaysPerYear;
   final int? minDaysNotice;
 
@@ -32,7 +32,7 @@ class LeaveTypeModel {
       unit: json['unit'] ?? '',
       isPaid: json['is_paid'] ?? false,
       deductQuota: json['deduct_quota'] ?? false,
-      requireAttachment: json['requires_attachment'] ?? 0,
+      requireAttachment: json['requires_attachment'] ?? false,
       maxDaysPerYear: json['max_days_per_year'],
       minDaysNotice: json['min_days_notice'],
     );

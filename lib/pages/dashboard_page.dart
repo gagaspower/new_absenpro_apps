@@ -6,6 +6,7 @@ import 'package:absenpro/pages/home_page.dart';
 import 'package:absenpro/pages/profil_page.dart';
 import 'package:absenpro/providers/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -108,105 +109,121 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: softBackground,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
+    // Without this, the OS system navigation bar keeps its own default
+    // color (usually white/black) instead of blending with softBackground,
+    // which shows up as a mismatched strip right behind the floating nav.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: softBackground,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      child: Scaffold(
+        backgroundColor: softBackground,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: _buildBottomNavigationBar(),
+      ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    return SizedBox(
-      height: 59,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                // Slightly rounded top corners so the bar doesn't feel like
-                // a hard-edged slab sitting on the soft gray background.
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(
-                    icon: Icons.home_outlined,
-                    label: 'Home',
-                    selected: _currentIndex == 0,
-                    onTap: () => _selectPage(0),
-                  ),
-                  const SizedBox(width: 82),
-                  _buildNavItem(
-                    icon: Icons.person_outline,
-                    label: 'Profil',
-                    selected: _currentIndex == 2,
-                    onTap: () => _selectPage(2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -26,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _handleCenterAttendance,
-                  customBorder: const CircleBorder(),
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: primaryTeal,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: primaryTeal.withOpacity(0.28),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+    // Floating pill — only as wide as it needs to be for 3 items, with
+    // margin on every side so the soft background peeks through around it.
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 64, bottom: 20),
+      child: SizedBox(
+        height: 60,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  // Fully rounded on every corner — a pill, not a slab.
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 8),
                     ),
-                    child: _isSubmittingAttendance
-                        ? const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.center_focus_strong,
-                            color: Colors.white,
-                            size: 25,
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(
+                      icon: Icons.home_outlined,
+                      label: 'Home',
+                      selected: _currentIndex == 0,
+                      onTap: () => _selectPage(0),
+                    ),
+                    // Narrower gap than before — the whole bar is tighter now.
+                    const SizedBox(width: 56),
+                    _buildNavItem(
+                      icon: Icons.person_outline,
+                      label: 'Profil',
+                      selected: _currentIndex == 2,
+                      onTap: () => _selectPage(2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: -22,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _handleCenterAttendance,
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: primaryTeal,
+                        shape: BoxShape.circle,
+                        // Small white ring so the raised button reads as
+                        // floating above the pill rather than merging into it.
+                        border: Border.all(color: softBackground, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryTeal.withOpacity(0.28),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 4),
                           ),
+                        ],
+                      ),
+                      child: _isSubmittingAttendance
+                          ? const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.center_focus_strong,
+                              color: Colors.white,
+                              size: 25,
+                            ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
