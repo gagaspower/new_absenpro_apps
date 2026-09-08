@@ -1,3 +1,4 @@
+import 'package:absenpro/models/work_schedule/work_schedule_model.dart';
 import 'package:absenpro/models/users/user_model.dart';
 import 'package:absenpro/services/api_service.dart';
 import 'package:absenpro/services/storage_service.dart';
@@ -27,9 +28,22 @@ class AuthService {
       if (body['status'] == true) {
         final data = body['data'];
 
-        final user = UserModel.fromJson(data['user']);
+        var user = UserModel.fromJson(data['user']);
         final accessToken = data['access_token'] as String;
         final permissions = List<String>.from(data['permissions'] ?? []);
+
+        // work_schedule dikirim backend terpisah di level atas (data.work_schedule),
+        // bukan nested di data.user.employee.shift lagi. Merge ke employee di sini
+        // supaya sisa app (Home, dsb) tetap baca dari satu tempat: user.employee.
+        final workScheduleJson = data['work_schedule'];
+        if (workScheduleJson != null && user.employee != null) {
+          final workSchedule = WorkScheduleModel.fromJson(
+            workScheduleJson as Map<String, dynamic>,
+          );
+          user = user.copyWith(
+            employee: user.employee!.copyWith(workSchedule: workSchedule),
+          );
+        }
 
         // Simpan token, data user, dan permissions ke local storage
         await StorageService.saveToken(accessToken);

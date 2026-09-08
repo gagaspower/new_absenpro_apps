@@ -5,6 +5,7 @@ import 'package:absenpro/models/department/department_model.dart';
 import 'package:absenpro/models/face_profile/face_profile_model.dart';
 import 'package:absenpro/models/position/position_model.dart';
 import 'package:absenpro/models/shift/shift_model.dart';
+import 'package:absenpro/models/work_schedule/work_schedule_model.dart';
 
 class UserModel {
   final String id;
@@ -98,7 +99,11 @@ class EmployeeModel {
   final DepartmentModel? department;
   final PositionModel? position;
   final BranchModel? branch;
+  // Deprecated: backend gak lagi kirim `employee.shift` nested. Field ini
+  // tetap ada buat kompatibilitas lama, tapi sekarang selalu null dari
+  // response terbaru. Pakai `workSchedule` sebagai gantinya.
   final ShiftModel? shift;
+  final WorkScheduleModel? workSchedule;
   final FaceProfileModel? faceProfile;
   final AttendanceModel? attendanceToday;
 
@@ -112,6 +117,7 @@ class EmployeeModel {
     this.position,
     this.branch,
     this.shift,
+    this.workSchedule,
     this.faceProfile,
     this.attendanceToday,
   });
@@ -134,6 +140,14 @@ class EmployeeModel {
           : null,
       shift: json['shift'] != null
           ? ShiftModel.fromJson(json['shift'] as Map<String, dynamic>)
+          : null,
+      // work_schedule biasanya dikirim backend di level atas response
+      // (data.work_schedule), bukan nested di sini — lihat
+      // AuthService.login yang mem-merge-nya via copyWith setelah parsing.
+      // Baris ini cuma jaga-jaga kalau suatu saat backend nested-in.
+      workSchedule: json['work_schedule'] != null
+          ? WorkScheduleModel.fromJson(
+              json['work_schedule'] as Map<String, dynamic>)
           : null,
       faceProfile: json['face_profile'] != null
           ? FaceProfileModel.fromJson(
@@ -160,6 +174,7 @@ class EmployeeModel {
       'position': position?.toJson(),
       'branch': branch?.toJson(),
       'shift': shift?.toJson(),
+      'work_schedule': workSchedule?.toJson(),
       'face_profile': faceProfile?.toJson(),
       'attendance_today': attendanceToday?.toJson(),
     };
@@ -168,6 +183,7 @@ class EmployeeModel {
   EmployeeModel copyWith({
     AttendanceModel? attendanceToday,
     FaceProfileModel? faceProfile,
+    WorkScheduleModel? workSchedule,
   }) {
     return EmployeeModel(
       id: id,
@@ -179,6 +195,7 @@ class EmployeeModel {
       position: position,
       branch: branch,
       shift: shift,
+      workSchedule: workSchedule ?? this.workSchedule,
       faceProfile: faceProfile ?? this.faceProfile,
       attendanceToday: attendanceToday ?? this.attendanceToday,
     );
@@ -199,6 +216,7 @@ class EmployeeModel {
       position: position,
       branch: branch,
       shift: shift,
+      workSchedule: workSchedule,
       faceProfile: faceProfile,
       attendanceToday: attendanceToday,
     );
