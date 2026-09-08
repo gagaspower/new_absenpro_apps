@@ -114,6 +114,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       child: Scaffold(
         backgroundColor: softBackground,
+        extendBody: true,
         body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: _buildBottomNavigationBar(),
       ),
@@ -121,91 +122,94 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildBottomNavigationBar() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 64, right: 64, bottom: 20),
-      child: SizedBox(
-        height: 60,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(
-                      icon: Icons.home_outlined,
-                      label: 'Home',
-                      selected: _currentIndex == 0,
-                      onTap: () => _selectPage(0),
-                    ),
-                    const SizedBox(width: 56),
-                    _buildNavItem(
-                      icon: Icons.person_outline,
-                      label: 'Profil',
-                      selected: _currentIndex == 2,
-                      onTap: () => _selectPage(2),
-                    ),
-                  ],
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 64, right: 64, bottom: 20),
+        child: SizedBox(
+          height: 60,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(
+                        icon: Icons.home_outlined,
+                        label: 'Home',
+                        selected: _currentIndex == 0,
+                        onTap: () => _selectPage(0),
+                      ),
+                      const SizedBox(width: 56),
+                      _buildNavItem(
+                        icon: Icons.person_outline,
+                        label: 'Profil',
+                        selected: _currentIndex == 2,
+                        onTap: () => _selectPage(2),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              top: -22,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _handleCenterAttendance,
-                    customBorder: const CircleBorder(),
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: primaryTeal,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: softBackground, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryTeal.withOpacity(0.28),
-                            blurRadius: 12,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: _isSubmittingAttendance
-                          ? const Padding(
-                              padding: EdgeInsets.all(14),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.center_focus_strong,
-                              color: Colors.white,
-                              size: 25,
+              Positioned(
+                top: -22,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _handleCenterAttendance,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: primaryTeal,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: softBackground, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryTeal.withOpacity(0.28),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 4),
                             ),
+                          ],
+                        ),
+                        child: _isSubmittingAttendance
+                            ? const Padding(
+                                padding: EdgeInsets.all(14),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.center_focus_strong,
+                                color: Colors.white,
+                                size: 25,
+                              ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

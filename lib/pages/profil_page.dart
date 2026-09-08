@@ -58,8 +58,14 @@ class _ProfilPageState extends State<ProfilPage> {
               : 'Mengikuti Cabang';
 
           return SafeArea(
+            bottom: false,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                24,
+                20,
+                MediaQuery.of(context).padding.bottom + 100,
+              ),
               child: Column(
                 children: [
                   Container(

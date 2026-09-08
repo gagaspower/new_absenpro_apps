@@ -309,19 +309,25 @@ class _AbsenCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusInfo = _absenStatusInfo(attendance.status);
+    final offDayInfo = _absenOffDayInfo(attendance);
+    final bool isMuted = attendance.isMuted;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isMuted ? const Color(0xFFF6F6F8) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border:
+            isMuted ? Border.all(color: Colors.black.withOpacity(0.06)) : null,
+        boxShadow: isMuted
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,10 +338,10 @@ class _AbsenCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   attendance.attendanceDate,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: isMuted ? Colors.black45 : Colors.black87,
                   ),
                 ),
               ),
@@ -343,7 +349,7 @@ class _AbsenCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusInfo.color.withOpacity(0.12),
+                  color: statusInfo.color.withOpacity(isMuted ? 0.08 : 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -351,85 +357,163 @@ class _AbsenCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: statusInfo.color,
+                    color: isMuted
+                        ? statusInfo.color.withOpacity(0.7)
+                        : statusInfo.color,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCF2E3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.face_outlined,
-                  color: Color(0xFF4CAF7D),
-                  size: 24,
-                ),
+          if (offDayInfo != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: offDayInfo.color.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      attendance.hasCheckedIn ? attendance.checkInTime! : '-',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Masuk',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-              const Text(
-                '|',
-                style: TextStyle(fontSize: 16, color: Colors.black26),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      attendance.hasCheckedOut ? attendance.checkOutTime! : '-',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Pulang',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(offDayInfo.icon, size: 14, color: offDayInfo.color),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      offDayInfo.label,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: attendance.hasCheckedOut
-                            ? Colors.black54
-                            : Colors.red[300],
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: offDayInfo.color,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Opacity(
+            opacity: isMuted ? 0.55 : 1,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCF2E3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.face_outlined,
+                    color: Color(0xFF4CAF7D),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        attendance.hasCheckedIn ? attendance.checkInTime! : '-',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Masuk',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                const Text(
+                  '|',
+                  style: TextStyle(fontSize: 16, color: Colors.black26),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        attendance.hasCheckedOut
+                            ? attendance.checkOutTime!
+                            : '-',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Pulang',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: attendance.hasCheckedOut
+                              ? Colors.black54
+                              : (isMuted ? Colors.black38 : Colors.red[300]),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _OffDayInfo {
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const _OffDayInfo(this.label, this.color, this.icon);
+}
+
+/// Nentuin info "kenapa hari ini pudar/tidak aktif": prioritas cuti/izin
+/// (paling spesifik & actionable) > hari libur > bukan hari kerja lain
+/// (mis. weekend tanpa data holiday). Return null kalau hari kerja normal.
+_OffDayInfo? _absenOffDayInfo(AttendanceHistoryModel attendance) {
+  final leave = attendance.leave;
+  if (leave != null) {
+    final isCuti = leave.isCuti;
+    final isIzin = leave.isIzin;
+    final categoryLabel = isCuti ? 'Cuti' : (isIzin ? 'Izin' : 'Cuti/Izin');
+    final typeName = leave.leaveType?.name;
+    final label = (typeName != null && typeName.isNotEmpty)
+        ? '$categoryLabel • $typeName'
+        : categoryLabel;
+    final color = isCuti ? const Color(0xFF8E6FCE) : const Color(0xFF4A87C9);
+    return _OffDayInfo(label, color, Icons.event_busy_rounded);
+  }
+
+  if (attendance.isHoliday) {
+    final holidayName = attendance.holiday?.name;
+    final label = (holidayName != null && holidayName.isNotEmpty)
+        ? holidayName
+        : 'Hari Libur';
+    return _OffDayInfo(
+        label, const Color(0xFFE0A039), Icons.celebration_outlined);
+  }
+
+  if (!attendance.isWorkingDay) {
+    final label = attendance.isWeekend ? 'Akhir Pekan' : 'Bukan Hari Kerja';
+    return _OffDayInfo(label, Colors.black45, Icons.event_outlined);
+  }
+
+  return null;
 }
 
 class _AbsenStatusInfo {
