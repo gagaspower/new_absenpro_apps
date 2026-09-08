@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:absenpro/models/users/user_model.dart';
+import 'package:absenpro/models/work_schedule/work_schedule_model.dart';
 import 'package:absenpro/services/api_service.dart';
 import 'package:dio/dio.dart';
 
@@ -7,13 +8,7 @@ class FaceProfileService {
   final ApiService _apiService = ApiService();
 
   /// Daftarkan foto referensi wajah pegawai.
-  /// Endpoint: POST reference/pegawai/face-registration
-  /// Form-data: photo (file)
-  ///
-  /// Backend mengembalikan data user lengkap (sama struktur seperti
-  /// response login) di dalam body['data']['user'], supaya local storage
-  /// bisa langsung di-refresh dengan data terbaru (termasuk face_profile
-  /// yang baru saja terdaftar).
+  /// Backend mengembalikan data user lengkap dan work_schedule di level data.
   Future<UserModel> registerFaceProfile({required File photo}) async {
     try {
       final formData = FormData.fromMap({
@@ -38,11 +33,26 @@ class FaceProfileService {
       }
 
       final data = body['data'];
-      if (data is Map && data['user'] is Map<String, dynamic>) {
-        return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      if (data is! Map || data['user'] is! Map<String, dynamic>) {
+        throw Exception('Response data user tidak valid');
       }
 
-      throw Exception('Response data user tidak valid');
+      var user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+
+      // work_schedule dikirim di level data, bukan nested di user.employee.
+      // Pertahankan jadwal setelah replace user agar Dashboard/Home tetap
+      // dapat menentukan window absensi tanpa login ulang.
+      final workScheduleJson = data['work_schedule'];
+      if (workScheduleJson is Map && user.employee != null) {
+        final workSchedule = WorkScheduleModel.fromJson(
+          Map<String, dynamic>.from(workScheduleJson),
+        );
+        user = user.copyWith(
+          employee: user.employee!.copyWith(workSchedule: workSchedule),
+        );
+      }
+
+      return user;
     } on DioException catch (e) {
       final message = e.response?.data is Map
           ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
