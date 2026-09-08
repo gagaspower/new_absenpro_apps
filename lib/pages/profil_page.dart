@@ -8,8 +8,6 @@ class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
 
   static const Color primaryTeal = Color(0xFF2FC7CF);
-  // Sama dengan softBackground di DashboardPage — biar body tab ini nyatu
-  // warnanya dengan area di belakang bottom navigation yang melayang.
   static const Color softBackground = Color(0xFFF4F5F7);
 
   @override
@@ -20,7 +18,6 @@ class _ProfilPageState extends State<ProfilPage> {
   @override
   void initState() {
     super.initState();
-    // Kalau app baru dibuka lagi (state provider kosong), ambil dari local storage
     final authProvider = context.read<AuthProvider>();
     if (authProvider.user == null) {
       authProvider.loadUserFromStorage();
@@ -33,7 +30,7 @@ class _ProfilPageState extends State<ProfilPage> {
       backgroundColor: ProfilPage.softBackground,
       appBar: AppBar(
         title: const Text('Profil Pegawai'),
-        automaticallyImplyLeading: false, // tidak ada tombol back
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0.5,
@@ -48,13 +45,23 @@ class _ProfilPageState extends State<ProfilPage> {
           }
 
           final employee = user.employee;
+          final workSchedule = employee?.workSchedule;
+
+          // Jadwal kerja menjadi sumber informasi shift.
+          // Jika menggunakan shift, tampilkan nama shift.
+          // Jika mengikuti branch schedule atau jadwal tidak tersedia,
+          // tampilkan "Mengikuti Cabang".
+          final shiftText = workSchedule?.source == 'shift'
+              ? (workSchedule?.shiftName?.isNotEmpty == true
+                  ? workSchedule!.shiftName!
+                  : 'Mengikuti Cabang')
+              : 'Mengikuti Cabang';
 
           return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Column(
                 children: [
-                  // Foto profil bulat
                   Container(
                     width: 96,
                     height: 96,
@@ -67,7 +74,6 @@ class _ProfilPageState extends State<ProfilPage> {
                     child: ClipOval(
                       child: employee?.photoUrl != null
                           ? Image.network(
-                              // Diambil dari face_profile.reference_photo_path
                               employee!.photoUrl!,
                               fit: BoxFit.cover,
                               loadingBuilder: (context, child, progress) {
@@ -110,8 +116,6 @@ class _ProfilPageState extends State<ProfilPage> {
                     style: const TextStyle(fontSize: 13, color: Colors.black45),
                   ),
                   const SizedBox(height: 24),
-
-                  // Kartu biodata
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -159,26 +163,17 @@ class _ProfilPageState extends State<ProfilPage> {
                         ),
                         _BiodataRow(
                           label: 'Shift',
-                          value: employee?.shift?.name ?? '-',
+                          value: shiftText,
                         ),
                         _BiodataRow(
                           label: 'Role',
                           value: user.roleName,
                           isLast: true,
                         ),
-
-                        // TODO: field berikut belum tersedia di response API,
-                        // tampilkan kalau backend sudah menyediakan:
-                        // - Nomer HP
-                        // - Jenis Kelamin
-                        // - Tempat, Tgl Lahir
-                        // - Status Pegawai
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Menu Ganti Password & Keluar
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -244,10 +239,7 @@ class _ProfilPageState extends State<ProfilPage> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(dialogContext); // tutup dialog konfirmasi saja
-
-              // Tampilkan modal loading, pakai context asli ProfilPage
-              // (bukan context dialog konfirmasi yang sudah ditutup)
+              Navigator.pop(dialogContext);
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -259,7 +251,6 @@ class _ProfilPageState extends State<ProfilPage> {
 
               if (!context.mounted) return;
 
-              // Tutup modal loading lewat root navigator
               Navigator.of(context, rootNavigator: true).pop();
 
               Navigator.pushAndRemoveUntil(
@@ -276,7 +267,6 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 }
 
-/// Baris biodata dengan label & titik dua rapi, aman untuk teks panjang.
 class _BiodataRow extends StatelessWidget {
   final String label;
   final String value;
@@ -377,7 +367,6 @@ class _MenuTile extends StatelessWidget {
   }
 }
 
-/// Modal loading saat proses logout (revoke session) berlangsung.
 class _LogoutLoadingDialog extends StatelessWidget {
   const _LogoutLoadingDialog();
 
