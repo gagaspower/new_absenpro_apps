@@ -18,60 +18,60 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   static const Color primaryTeal = Color(0xFF30CBD7);
-  // Soft neutral background instead of pure white — gives the whole
-  // dashboard a slightly warmer, less clinical feel.
   static const Color softBackground = Color(0xFFF4F5F7);
 
   int _currentIndex = 0;
   bool _isSubmittingAttendance = false;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    HistoriPage(),
-    ProfilPage(),
-  ];
+  final List<Widget> _pages = const [HomePage(), HistoriPage(), ProfilPage()];
 
   Future<void> _handleCenterAttendance() async {
     if (_isSubmittingAttendance) return;
 
     final employee = context.read<AuthProvider>().user?.employee;
-    final shift = employee?.shift;
+    final workSchedule = employee?.workSchedule;
     final attendance = employee?.attendanceToday;
 
-    if (shift == null) {
-      _showMessage('Jadwal shift belum tersedia.');
+    if (workSchedule == null) {
+      _showMessage('Jadwal kerja hari ini belum tersedia.');
       return;
     }
 
     final hasCheckedIn = attendance?.hasCheckedIn ?? false;
     final hasCheckedOut = attendance?.hasCheckedOut ?? false;
 
-    final withinCheckOutWindow =
-        TimeHelper.isWithinRange(shift.checkOutStart, shift.checkOutEnd);
-    final withinCheckInWindow =
-        TimeHelper.isWithinRange(shift.checkInStart, shift.checkInEnd);
+    final withinCheckInWindow = TimeHelper.isWithinRange(
+      workSchedule.checkInStart,
+      workSchedule.checkInEnd,
+    );
+    final withinCheckOutWindow = TimeHelper.isWithinRange(
+      workSchedule.checkOutStart,
+      workSchedule.checkOutEnd,
+    );
 
     late final bool isCheckIn;
 
-    if (withinCheckOutWindow && hasCheckedIn && !hasCheckedOut) {
-      isCheckIn = false;
-    } else if (withinCheckInWindow && !hasCheckedIn) {
+    if (hasCheckedOut) {
+      _showMessage('Absensi masuk dan pulang hari ini sudah selesai.');
+      return;
+    }
+
+    if (!hasCheckedIn) {
+      if (!withinCheckInWindow) {
+        _showMessage(
+          'Absen masuk hanya bisa jam ${workSchedule.checkInStart ?? '-'} - ${workSchedule.checkInEnd ?? '-'}.',
+        );
+        return;
+      }
       isCheckIn = true;
     } else {
-      if (hasCheckedOut) {
-        _showMessage('Absensi masuk dan pulang hari ini sudah selesai.');
-      } else if (hasCheckedIn && !withinCheckOutWindow) {
+      if (!withinCheckOutWindow) {
         _showMessage(
-          'Absen pulang hanya bisa jam ${shift.checkOutStart} - ${shift.checkOutEnd}.',
+          'Absen pulang hanya bisa jam ${workSchedule.checkOutStart ?? '-'} - ${workSchedule.checkOutEnd ?? '-'}.',
         );
-      } else if (!hasCheckedIn && !withinCheckInWindow) {
-        _showMessage(
-          'Absen masuk hanya bisa jam ${shift.checkInStart} - ${shift.checkInEnd}.',
-        );
-      } else {
-        _showMessage('Absensi belum tersedia pada waktu ini.');
+        return;
       }
-      return;
+      isCheckIn = false;
     }
 
     setState(() => _isSubmittingAttendance = true);
@@ -90,9 +90,7 @@ class _DashboardPageState extends State<DashboardPage> {
             .updateAttendanceFromServer(attendanceResult);
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSubmittingAttendance = false);
-      }
+      if (mounted) setState(() => _isSubmittingAttendance = false);
     }
   }
 
@@ -103,15 +101,10 @@ class _DashboardPageState extends State<DashboardPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _selectPage(int index) {
-    setState(() => _currentIndex = index);
-  }
+  void _selectPage(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
-    // Without this, the OS system navigation bar keeps its own default
-    // color (usually white/black) instead of blending with softBackground,
-    // which shows up as a mismatched strip right behind the floating nav.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         systemNavigationBarColor: softBackground,
@@ -121,18 +114,13 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       child: Scaffold(
         backgroundColor: softBackground,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
-        ),
+        body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: _buildBottomNavigationBar(),
       ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    // Floating pill — only as wide as it needs to be for 3 items, with
-    // margin on every side so the soft background peeks through around it.
     return Padding(
       padding: const EdgeInsets.only(left: 64, right: 64, bottom: 20),
       child: SizedBox(
@@ -144,13 +132,11 @@ class _DashboardPageState extends State<DashboardPage> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  // Fully rounded on every corner — a pill, not a slab.
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.12),
                       blurRadius: 20,
-                      spreadRadius: 0,
                       offset: const Offset(0, 8),
                     ),
                   ],
@@ -164,7 +150,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       selected: _currentIndex == 0,
                       onTap: () => _selectPage(0),
                     ),
-                    // Narrower gap than before — the whole bar is tighter now.
                     const SizedBox(width: 56),
                     _buildNavItem(
                       icon: Icons.person_outline,
@@ -192,8 +177,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       decoration: BoxDecoration(
                         color: primaryTeal,
                         shape: BoxShape.circle,
-                        // Small white ring so the raised button reads as
-                        // floating above the pill rather than merging into it.
                         border: Border.all(color: softBackground, width: 4),
                         boxShadow: [
                           BoxShadow(
