@@ -1,11 +1,11 @@
 import 'package:absenpro/models/attendance_history/attendance_history_model.dart';
+import 'package:absenpro/widgets/periode_filter_widget.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:absenpro/models/periode/periode_model.dart';
 import 'package:absenpro/providers/attendance/attendance_history_provider.dart';
 import 'package:absenpro/providers/periode/periode_provider.dart';
 import 'package:absenpro/widgets/empty_state_widget.dart';
-import 'package:absenpro/widgets/periode_filter_widget.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class HistoriAbsenTab extends StatefulWidget {
   const HistoriAbsenTab({super.key});
@@ -20,6 +20,7 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
   @override
   void initState() {
     super.initState();
+
     _absenScrollController.addListener(_onAbsenScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,7 +48,9 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
 
     periodeProvider.fetchPeriode().then((_) {
       if (!mounted) return;
+
       final selected = context.read<PeriodeProvider>().selectedPeriode;
+
       if (selected != null) {
         context.read<AttendanceHistoryProvider>().fetchInitial(
               periode: selected.periodeValue,
@@ -58,7 +61,9 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
 
   void _onAbsenScroll() {
     if (!_absenScrollController.hasClients) return;
+
     final position = _absenScrollController.position;
+
     if (position.pixels >= position.maxScrollExtent - 200) {
       context.read<AttendanceHistoryProvider>().loadMore();
     }
@@ -106,14 +111,18 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
                     child: Text(
                       historyProvider.errorMessage!,
                       textAlign: TextAlign.center,
-                      style:
-                          const TextStyle(color: Colors.black45, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.black45,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 );
               }
 
-              if (historyProvider.items.isEmpty) {
+              final items = historyProvider.items;
+
+              if (items.isEmpty && !historyProvider.hasMore) {
                 return const EmptyStateWidget(
                   assetPath: 'assets/images/oversight.svg',
                   title: 'Tidak ada data',
@@ -123,18 +132,19 @@ class _HistoriAbsenTabState extends State<HistoriAbsenTab> {
               return ListView.separated(
                 controller: _absenScrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: historyProvider.items.length +
-                    (historyProvider.hasMore ? 1 : 0),
+                itemCount: items.length + (historyProvider.hasMore ? 1 : 0),
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  if (index >= historyProvider.items.length) {
+                  if (index >= items.length) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: _AbsenSkeletonCard(),
                     );
                   }
 
-                  return _AbsenCard(attendance: historyProvider.items[index]);
+                  return _AbsenCard(
+                    attendance: items[index],
+                  );
                 },
               );
             },
@@ -196,9 +206,17 @@ class _AbsenSkeletonCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SkeletonBox(height: 13, width: 90, borderRadius: 6),
+                    _SkeletonBox(
+                      height: 13,
+                      width: 90,
+                      borderRadius: 6,
+                    ),
                     const SizedBox(height: 8),
-                    _SkeletonBox(height: 12, width: 60, borderRadius: 6),
+                    _SkeletonBox(
+                      height: 12,
+                      width: 60,
+                      borderRadius: 6,
+                    ),
                   ],
                 ),
               ),
@@ -207,9 +225,17 @@ class _AbsenSkeletonCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _SkeletonBox(height: 13, width: 90, borderRadius: 6),
+                    _SkeletonBox(
+                      height: 13,
+                      width: 90,
+                      borderRadius: 6,
+                    ),
                     const SizedBox(height: 8),
-                    _SkeletonBox(height: 12, width: 60, borderRadius: 6),
+                    _SkeletonBox(
+                      height: 12,
+                      width: 60,
+                      borderRadius: 6,
+                    ),
                   ],
                 ),
               ),
@@ -250,7 +276,9 @@ class _SkeletonBox extends StatelessWidget {
 class _SkeletonShimmer extends StatefulWidget {
   final Widget child;
 
-  const _SkeletonShimmer({required this.child});
+  const _SkeletonShimmer({
+    required this.child,
+  });
 
   @override
   State<_SkeletonShimmer> createState() => _SkeletonShimmerState();
@@ -263,6 +291,7 @@ class _SkeletonShimmerState extends State<_SkeletonShimmer>
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -283,14 +312,24 @@ class _SkeletonShimmerState extends State<_SkeletonShimmer>
         return ShaderMask(
           shaderCallback: (bounds) {
             return LinearGradient(
-              begin: Alignment(-1.0 + (_controller.value * 2.0), 0),
-              end: Alignment(0.0 + (_controller.value * 2.0), 0),
+              begin: Alignment(
+                -1.0 + (_controller.value * 2.0),
+                0,
+              ),
+              end: Alignment(
+                0.0 + (_controller.value * 2.0),
+                0,
+              ),
               colors: [
                 Colors.transparent,
                 Colors.white.withOpacity(0.55),
                 Colors.transparent,
               ],
-              stops: const [0.0, 0.5, 1.0],
+              stops: const [
+                0.0,
+                0.5,
+                1.0,
+              ],
             ).createShader(bounds);
           },
           blendMode: BlendMode.srcATop,
@@ -304,7 +343,9 @@ class _SkeletonShimmerState extends State<_SkeletonShimmer>
 class _AbsenCard extends StatelessWidget {
   final AttendanceHistoryModel attendance;
 
-  const _AbsenCard({required this.attendance});
+  const _AbsenCard({
+    required this.attendance,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -317,8 +358,11 @@ class _AbsenCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isMuted ? const Color(0xFFF6F6F8) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border:
-            isMuted ? Border.all(color: Colors.black.withOpacity(0.06)) : null,
+        border: isMuted
+            ? Border.all(
+                color: Colors.black.withOpacity(0.06),
+              )
+            : null,
         boxShadow: isMuted
             ? const []
             : [
@@ -346,10 +390,14 @@ class _AbsenCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: statusInfo.color.withOpacity(isMuted ? 0.08 : 0.12),
+                  color: statusInfo.color.withOpacity(
+                    isMuted ? 0.08 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -369,7 +417,10 @@ class _AbsenCard extends StatelessWidget {
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
               decoration: BoxDecoration(
                 color: offDayInfo.color.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(8),
@@ -377,7 +428,11 @@ class _AbsenCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(offDayInfo.icon, size: 14, color: offDayInfo.color),
+                  Icon(
+                    offDayInfo.icon,
+                    size: 14,
+                    color: offDayInfo.color,
+                  ),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -429,14 +484,20 @@ class _AbsenCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       const Text(
                         'Masuk',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const Text(
                   '|',
-                  style: TextStyle(fontSize: 16, color: Colors.black26),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black26,
+                  ),
                 ),
                 Expanded(
                   child: Column(
@@ -479,38 +540,61 @@ class _OffDayInfo {
   final Color color;
   final IconData icon;
 
-  const _OffDayInfo(this.label, this.color, this.icon);
+  const _OffDayInfo(
+    this.label,
+    this.color,
+    this.icon,
+  );
 }
 
-/// Nentuin info "kenapa hari ini pudar/tidak aktif": prioritas cuti/izin
-/// (paling spesifik & actionable) > hari libur > bukan hari kerja lain
-/// (mis. weekend tanpa data holiday). Return null kalau hari kerja normal.
-_OffDayInfo? _absenOffDayInfo(AttendanceHistoryModel attendance) {
+_OffDayInfo? _absenOffDayInfo(
+  AttendanceHistoryModel attendance,
+) {
   final leave = attendance.leave;
+
   if (leave != null) {
     final isCuti = leave.isCuti;
     final isIzin = leave.isIzin;
+
     final categoryLabel = isCuti ? 'Cuti' : (isIzin ? 'Izin' : 'Cuti/Izin');
+
     final typeName = leave.leaveType?.name;
+
     final label = (typeName != null && typeName.isNotEmpty)
         ? '$categoryLabel • $typeName'
         : categoryLabel;
+
     final color = isCuti ? const Color(0xFF8E6FCE) : const Color(0xFF4A87C9);
-    return _OffDayInfo(label, color, Icons.event_busy_rounded);
+
+    return _OffDayInfo(
+      label,
+      color,
+      Icons.event_busy_rounded,
+    );
   }
 
   if (attendance.isHoliday) {
     final holidayName = attendance.holiday?.name;
+
     final label = (holidayName != null && holidayName.isNotEmpty)
         ? holidayName
         : 'Hari Libur';
+
     return _OffDayInfo(
-        label, const Color(0xFFE0A039), Icons.celebration_outlined);
+      label,
+      const Color(0xFFE0A039),
+      Icons.celebration_outlined,
+    );
   }
 
   if (!attendance.isWorkingDay) {
     final label = attendance.isWeekend ? 'Akhir Pekan' : 'Bukan Hari Kerja';
-    return _OffDayInfo(label, Colors.black45, Icons.event_outlined);
+
+    return _OffDayInfo(
+      label,
+      Colors.black45,
+      Icons.event_outlined,
+    );
   }
 
   return null;
@@ -520,24 +604,55 @@ class _AbsenStatusInfo {
   final String label;
   final Color color;
 
-  const _AbsenStatusInfo(this.label, this.color);
+  const _AbsenStatusInfo(
+    this.label,
+    this.color,
+  );
 }
 
 _AbsenStatusInfo _absenStatusInfo(String? status) {
   switch (status) {
     case 'present':
-      return const _AbsenStatusInfo('Hadir', Color(0xFF4CAF7D));
+      return const _AbsenStatusInfo(
+        'Hadir',
+        Color(0xFF4CAF7D),
+      );
+
     case 'late':
-      return const _AbsenStatusInfo('Terlambat', Color(0xFFC9A23B));
+      return const _AbsenStatusInfo(
+        'Terlambat',
+        Color(0xFFC9A23B),
+      );
+
     case 'permission':
-      return const _AbsenStatusInfo('Izin', Color(0xFF4A87C9));
+      return const _AbsenStatusInfo(
+        'Izin',
+        Color(0xFF4A87C9),
+      );
+
     case 'leave':
-      return const _AbsenStatusInfo('Cuti', Color(0xFF8E6FCE));
+      return const _AbsenStatusInfo(
+        'Cuti',
+        Color(0xFF8E6FCE),
+      );
+
     case 'sick':
-      return const _AbsenStatusInfo('Sakit', Color(0xFFE0637A));
+      return const _AbsenStatusInfo(
+        'Sakit',
+        Color(0xFFE0784F),
+      );
+
     case 'absent':
-      return const _AbsenStatusInfo('Tidak Hadir', Color(0xFFB0413E));
+    case 'alpha':
+      return const _AbsenStatusInfo(
+        'Alpha',
+        Color(0xFFD9534F),
+      );
+
     default:
-      return const _AbsenStatusInfo('-', Colors.black45);
+      return const _AbsenStatusInfo(
+        '-',
+        Colors.black45,
+      );
   }
 }
