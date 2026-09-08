@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 import 'package:absenpro/services/api_service.dart';
 import 'package:dio/dio.dart';
-import 'package:absenpro/models/leave_request_model/leave_request_model.dart';
 
 class LeaveRequestHistoryPage {
   final int total;
@@ -17,22 +17,21 @@ class LeaveRequestHistoryPage {
 class LeaveRequestService {
   final ApiService _apiService = ApiService();
 
-  /// Kirim pengajuan cuti/izin.
-  /// `attachment` opsional dan dikirim sebagai multipart.
   Future<LeaveRequestModel> submitLeaveRequest(
     LeaveRequestPayload payload, {
     File? attachment,
   }) async {
     try {
-      final Map<String, dynamic> fields = payload.toJson().map(
-            (key, value) => MapEntry(
-              key,
-              value?.toString() ?? '',
-            ),
-          );
+      final Map<String, dynamic> fields = {};
+
+      final payloadJson = payload.toJson();
+
+      payloadJson.forEach((key, value) {
+        fields[key] = value?.toString() ?? '';
+      });
 
       if (attachment != null) {
-        fields['attachment[]'] = await MultipartFile.fromFile(
+        fields['attachments[]'] = await MultipartFile.fromFile(
           attachment.path,
           filename: attachment.path.split(Platform.pathSeparator).last,
         );
@@ -49,19 +48,48 @@ class LeaveRequestService {
 
       if (raw is Map && raw['success'] == true && raw['data'] is Map) {
         return LeaveRequestModel.fromJson(
-          raw['data'] as Map<String, dynamic>,
+          Map<String, dynamic>.from(
+            raw['data'] as Map,
+          ),
         );
       }
 
-      final message = raw is Map ? raw['message'] : null;
+      final message = raw is Map ? raw['message']?.toString() : null;
 
       throw Exception(
-        message ?? 'Gagal mengajukan cuti/izin.',
+        message != null && message.isNotEmpty
+            ? message
+            : 'Gagal mengajukan cuti/izin.',
       );
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
-          : 'Tidak dapat terhubung ke server';
+      final responseData = e.response?.data;
+
+      String message = 'Tidak dapat terhubung ke server';
+
+      if (responseData is Map) {
+        final serverMessage = responseData['message'];
+
+        if (serverMessage != null && serverMessage.toString().isNotEmpty) {
+          message = serverMessage.toString();
+        } else {
+          final errors = responseData['errors'];
+
+          if (errors is Map) {
+            final attachmentErrors = errors['attachments'];
+
+            if (attachmentErrors is List && attachmentErrors.isNotEmpty) {
+              message = attachmentErrors.first.toString();
+            } else {
+              final attachmentItemErrors = errors['attachments.0'];
+
+              if (attachmentItemErrors is List &&
+                  attachmentItemErrors.isNotEmpty) {
+                message = attachmentItemErrors.first.toString();
+              }
+            }
+          }
+        }
+      }
 
       throw Exception(message);
     }
@@ -102,7 +130,9 @@ class LeaveRequestService {
         final rows = (body['rows'] as List<dynamic>? ?? [])
             .map(
               (e) => LeaveRequestModel.fromJson(
-                e as Map<String, dynamic>,
+                Map<String, dynamic>.from(
+                  e as Map,
+                ),
               ),
             )
             .toList();
@@ -117,9 +147,17 @@ class LeaveRequestService {
         'Response histori permohonan tidak valid',
       );
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? (e.response?.data['message'] ?? 'Terjadi kesalahan, coba lagi')
-          : 'Tidak dapat terhubung ke server';
+      final responseData = e.response?.data;
+
+      String message = 'Tidak dapat terhubung ke server';
+
+      if (responseData is Map) {
+        final serverMessage = responseData['message'];
+
+        if (serverMessage != null && serverMessage.toString().isNotEmpty) {
+          message = serverMessage.toString();
+        }
+      }
 
       throw Exception(message);
     }
